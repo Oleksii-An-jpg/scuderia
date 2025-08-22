@@ -30,7 +30,7 @@ const roadListsRef = collection(db, 'road-lists');
 async function getAllRoadLists() {
     try {
         const querySnapshot = await getDocs(roadListsRef);
-        const roadLists: {}[] = [];
+        const roadLists: unknown[] = [];
 
         querySnapshot.forEach((doc) => {
             roadLists.push({

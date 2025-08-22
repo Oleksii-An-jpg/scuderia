@@ -19,7 +19,9 @@ import {useForm, useFieldArray, FormProvider} from "react-hook-form";
 import {Mamba, Report} from "@/components/Report/Mamba";
 import { BiPlus, BiTrash } from 'react-icons/bi'
 
-type CreateProps = {}
+type CreateProps = {
+    b?: boolean
+}
 
 export const convertToDecimalHours = (hours: number, minutes: number): number => {
     return hours + (minutes / 60);
@@ -40,7 +42,7 @@ enum Vehicle {
     MAMBA = 'Mamba',
 }
 
-export type Record<T = {}> = T & {
+export type Record<T = { b?: number }> = T & {
     departure?: Date;
     arrival?: Date;
     fueling?: number;
@@ -54,7 +56,7 @@ export type ReportFormValues<T> = {
 }
 
 const Create: FC<CreateProps> = () => {
-    const methods = useForm<ReportFormValues<{}>>({
+    const methods = useForm<ReportFormValues<{ b?: number }>>({
         defaultValues: {
             records: [
                 {

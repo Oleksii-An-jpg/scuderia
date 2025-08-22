@@ -29,7 +29,7 @@ const CONSUMPTION_RATES = {
     low: 31.2,
     medium: 137,
     full: 253
-} as const;
+};
 
 export const Report: FC = () => {
     const { watch } = useFormContext<ReportFormValues<Mamba>>();

@@ -1,7 +1,8 @@
 import {FC, Fragment, useEffect, useMemo, useCallback} from "react";
-import {Field, GridItem, Heading, HStack, Input, NativeSelect, Text} from "@chakra-ui/react";
+import {Field, GridItem, Heading, HStack, NativeSelect, Text} from "@chakra-ui/react";
 import {useFormContext} from "react-hook-form";
-import {convertToDecimalHours, formatMinutes, ReportFormValues} from "@/components/Report/Create";
+import {convertToDecimalHours, formatMinutes} from "@/components/Report/Create";
+import {Record, RoadList} from "@/db";
 
 type Time = {
     hours: number
@@ -31,9 +32,22 @@ const CONSUMPTION_RATES = {
     full: 253
 };
 
-export const Report: FC = () => {
-    const { watch } = useFormContext<ReportFormValues<Mamba>>();
-    const records = watch('records');
+type ReportProps = {
+    records: Record<Mamba>[];
+    options?: {
+        idle: boolean;
+        low: boolean;
+        medium: boolean;
+        full: boolean;
+    }
+};
+
+export const Report: FC<ReportProps> = ({ records, options = {
+    idle: true,
+    low: true,
+    medium: true,
+    full: true,
+} }) => {
     const { idle, low, medium, full } = records.reduce((acc, record) => {
         acc.idle += (record.idle?.hours ?? 0) * 60 + (record.idle?.minutes ?? 0);
         acc.low += (record.low?.hours ?? 0) * 60 + (record.low?.minutes ?? 0);
@@ -52,31 +66,32 @@ export const Report: FC = () => {
         const c = convertToDecimalHours(0, medium) * CONSUMPTION_RATES.medium;
         const d = convertToDecimalHours(0, full) * CONSUMPTION_RATES.full;
         return {
-            idle: a,
-            low: b,
+            idle: Math.ceil(a * 100) / 100,
+            low: Math.ceil(b * 100) / 100,
             medium: Math.ceil(c * 100) / 100,
-            full: d,
+            full: Math.ceil(d * 100) / 100,
             total: Math.ceil((a + b + c + d) * 100) / 100,
             time: idle + low + medium + full
         }
     }, [idle, low, medium, full]);
     return <>
-        <GridItem colStart={5}>
+        {options.idle && <GridItem colStart={5}>
             <Heading size="sm">{formatMinutes(idle)}</Heading>
             <Heading size="sm">{consumption.idle} л.</Heading>
-        </GridItem>
-        <GridItem>
+        </GridItem>}
+
+        {options.low && <GridItem>
             <Heading size="sm">{formatMinutes(low)}</Heading>
             <Heading size="sm">{consumption.low} л.</Heading>
-        </GridItem>
-        <GridItem>
+        </GridItem>}
+        {options.medium && <GridItem>
             <Heading size="sm">{formatMinutes(medium)}</Heading>
             <Heading size="sm">{consumption.medium} л.</Heading>
-        </GridItem>
-        <GridItem>
+        </GridItem>}
+        {options.full && <GridItem>
             <Heading size="sm">{formatMinutes(full)}</Heading>
             <Heading size="sm">{consumption.full} л.</Heading>
-        </GridItem>
+        </GridItem>}
         <GridItem>
             <Heading size="sm">{formatMinutes(consumption.time)}</Heading>
         </GridItem>
@@ -87,7 +102,7 @@ export const Report: FC = () => {
 }
 
 export const Mamba: FC<MambaProps> = ({ index, hours, minutes }) => {
-    const { register, watch, setValue } = useFormContext<ReportFormValues<Mamba>>();
+    const { register, watch, setValue } = useFormContext<RoadList<Mamba>>();
 
     // Watch only the specific record and previous record to minimize re-renders
     const currentRecord = watch(`records.${index}`);

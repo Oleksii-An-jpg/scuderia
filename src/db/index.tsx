@@ -9,7 +9,7 @@ import {
     WithFieldValue,
     DocumentData,
     QueryDocumentSnapshot,
-    SnapshotOptions, getDocs, getDoc
+    SnapshotOptions, getDocs, getDoc, deleteDoc
 } from "firebase/firestore";
 
 const app = initializeApp({
@@ -69,6 +69,11 @@ export async function upsertDoc(
     } else {
         return addDoc(roadListsRef, data);
     }
+}
+
+export async function deleteDocById(id: string) {
+    const docRef = doc(roadListsRef, id);
+    await deleteDoc(docRef);
 }
 
 export async function getDocById(id: string) {

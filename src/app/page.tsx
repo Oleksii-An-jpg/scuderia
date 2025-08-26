@@ -2,7 +2,7 @@
 import {VStack, Card} from "@chakra-ui/react";
 import Create from "@/components/Report/Create";
 import {List} from "@/components/Report/List";
-import {useSearchParams} from "next/navigation";
+import {useSearchParams, useRouter} from "next/navigation";
 import {Suspense, useEffect, useState} from "react";
 import {getAllRoadLists, RoadList} from "@/db";
 import {useToggle} from 'react-use';
@@ -15,6 +15,7 @@ export default function Page() {
 
 function P() {
     const params = useSearchParams();
+    const { replace } = useRouter();
     const id = params.get('id');
     const [on, toggle] = useToggle(false);
     const [doc, setDoc] = useState<RoadList>();
@@ -51,7 +52,15 @@ function P() {
               }} />
               <Card.Root>
                   <Card.Body>
-                      <List id={id} docs={docs} />
+                      <List id={id} docs={docs} onSubmit={(doc) => {
+                            getAllRoadLists().then(({ data }) => {
+                                setDocs(data);
+                            });
+
+                          if (doc.id === id) {
+                              return replace('/');
+                          }
+                      }} />
                   </Card.Body>
               </Card.Root>
           </> : 'loading...'}

@@ -15,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 import {useForm, useFieldArray, FormProvider} from "react-hook-form";
 import {Mamba, Report} from "@/components/Report/Mamba";
-import {BiCopy, BiPlus, BiSave, BiTrash} from 'react-icons/bi'
+import {BiPlus, BiSave, BiTrash} from 'react-icons/bi'
 import {RoadList, upsertDoc, Vehicle} from "@/db";
 import {useSearchParams} from "next/navigation";
 
@@ -161,7 +161,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                                             </Fragment>
                                         )
                                     })}
-                                    {vehicle === Vehicle.MAMBA && <Report records={records} />}
+                                    {vehicle === Vehicle.MAMBA && records.length > 1 && <Report records={records} />}
                                 </>
                                 }
                             </SimpleGrid>

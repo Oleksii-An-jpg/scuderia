@@ -178,16 +178,20 @@ export const Mamba: FC<MambaProps> = ({ index, records }) => {
     ]);
 
     // Memoize consumption calculation
-    const consumption = useMemo(() => Math.ceil((decimalTimes.idle * CONSUMPTION_RATES.idle +
-        decimalTimes.low * CONSUMPTION_RATES.low +
-        decimalTimes.medium * CONSUMPTION_RATES.medium +
-        decimalTimes.full * CONSUMPTION_RATES.full) * 100) / 100, [decimalTimes]);
+    const consumption = useMemo(() => {
+        const raw = decimalTimes.idle * CONSUMPTION_RATES.idle +
+            decimalTimes.low * CONSUMPTION_RATES.low +
+            decimalTimes.medium * CONSUMPTION_RATES.medium +
+            decimalTimes.full * CONSUMPTION_RATES.full;
 
-    // Memoize remaining calculation
-    const remaining = useMemo(() =>
-            Math.ceil(((currentRecord?.fueling || 0) - consumption + (previousRecord?.remaining || 0)) * 100) / 100,
-        [currentRecord?.fueling, consumption, previousRecord?.remaining]
-    );
+        return Math.ceil(Math.round(raw * 100)) / 100;
+    }, [decimalTimes]);
+
+    const remaining = useMemo(() => {
+        const raw = (currentRecord?.fueling || 0) - consumption + (previousRecord?.remaining || 0);
+
+        return Math.ceil(Math.round(raw * 100)) / 100;
+    }, [currentRecord?.fueling, consumption, previousRecord?.remaining]);
 
     // Use useCallback for setValue to prevent unnecessary re-renders
     const updateRemaining = useCallback(() => {

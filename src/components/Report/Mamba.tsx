@@ -96,7 +96,7 @@ export const Report: FC<ReportProps> = ({ records, options = {
             <Heading size="sm">{formatMinutes(consumption.time)}</Heading>
         </Box>
         <Box>
-            <Heading textAlign="center" size="sm" whiteSpace="nowrap">{consumption.total}</Heading>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.total}</Heading>
         </Box>
     </>
 }
@@ -228,14 +228,14 @@ export const Mamba: FC<MambaProps> = ({ index, records }) => {
                 </Field.Root>
             </VStack>
 
-            <VStack>
+            <VStack align="stretch" gap={1.5}>
                 {index === 0 && <Text textStyle="sm" whiteSpace="nowrap">Розхід (л)</Text>}
                 <Text whiteSpace="nowrap" lineHeight="2">
                     {consumption}
                 </Text>
             </VStack>
 
-            <VStack>
+            <VStack align="stretch" gap={1.5}>
                 {index === 0 && <Text textStyle="sm" whiteSpace="nowrap">Залишок (л)</Text>}
                 <Text whiteSpace="nowrap" lineHeight="2">
                     {remaining}

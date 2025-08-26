@@ -18,11 +18,12 @@ const app = initializeApp({
 });
 
 export type BaseRecord = {
-    departure?: Date;
-    arrival?: Date;
+    date?: Date;
+    comment?: string
     fueling?: number;
     br?: number;
     remaining?: number;
+    total?: string;
 };
 
 export enum Vehicle {
@@ -40,11 +41,16 @@ export type RoadList<T extends BaseRecord = BaseRecord> = {
 
 const roadListConverter = {
     toFirestore(roadList: RoadList): DocumentData {
-        return { ...roadList };
+        const records = roadList.records.map(record => {
+            return Object.fromEntries(
+                Object.entries(record).filter(([_, value]) => value !== undefined)
+            );
+        })
+        return { ...roadList, records };
     },
     fromFirestore(snapshot: QueryDocumentSnapshot<RoadList>, options: SnapshotOptions): RoadList {
         return snapshot.data(options);
-    }
+    },
 };
 
 export const db = getFirestore(app);

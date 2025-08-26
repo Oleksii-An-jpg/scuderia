@@ -4,7 +4,7 @@ import {RoadList} from "@/db";
 import {Report} from "@/components/Report/Mamba";
 import {Grid, GridItem, Heading, IconButton, Button, Link as ChakraLink, Text, VStack} from "@chakra-ui/react";
 import NextLink from "next/link"
-import {BiEdit} from "react-icons/bi";
+import {BiEdit, BiPlus} from "react-icons/bi";
 
 type ListProps = {
     docs?: RoadList[]
@@ -12,29 +12,25 @@ type ListProps = {
 }
 
 const Item: FC<{ doc: RoadList, active: boolean }> = ({ doc, active }) => {
-    const { departure, arrival } = useMemo(() => {
-        const departure = Math.min(doc.records.map(record => record.departure ? new Date(record.departure).getTime() : Infinity).reduce((a, b) => Math.min(a, b), Infinity));
-        const arrival = Math.max(doc.records.map(record => record.arrival ? new Date(record.arrival).getTime() : -Infinity).reduce((a, b) => Math.max(a, b), -Infinity));
-        return { departure, arrival }
+    const { departure } = useMemo(() => {
+        const departure = Math.min(doc.records.map(record => record.date ? new Date(record.date).getTime() : Infinity).reduce((a, b) => Math.min(a, b), Infinity));
+        return { departure }
     }, [doc]);
 
-    return <Grid templateColumns="subgrid" gridColumn="span 6" alignItems="center" className={active ? 'bg-amber-100' : ''}>
+    return <Grid templateColumns="subgrid" gridColumn="span 7" alignItems="center" className={active ? 'bg-amber-100' : ''}>
         <GridItem>
             <Text textStyle="sm">
                 {new Intl.DateTimeFormat("uk-UA", {
                     dateStyle: "medium",
                     timeStyle: "long",
                     timeZone: "Europe/Kyiv",
+                    timeZoneName: undefined
                 }).format(departure)}
             </Text>
         </GridItem>
         <GridItem>
             <Text textStyle="sm">
-                {new Intl.DateTimeFormat("uk-UA", {
-                    dateStyle: "medium",
-                    timeStyle: "long",
-                    timeZone: "Europe/Kyiv",
-                }).format(arrival)}
+                {doc.records[doc.records.length - 1]?.br}
             </Text>
         </GridItem>
         <GridItem>
@@ -63,20 +59,20 @@ const Item: FC<{ doc: RoadList, active: boolean }> = ({ doc, active }) => {
 export const List: FC<ListProps> = ({ docs, id }) => {
     return <VStack align="stretch" gap={4}>
         <div>
-            <Button asChild size="xs" variant="outline">
+            <Button asChild size="xs" variant="outline" colorPalette="blue">
                 <ChakraLink asChild>
                     <NextLink href={`/`}>
-                        Створити новий дорожній лист
+                        Новий дорожній лист <BiPlus />
                     </NextLink>
                 </ChakraLink>
             </Button>
         </div>
-        <Grid templateColumns="repeat(6, auto)" gap={2}>
+        <Grid templateColumns="repeat(7, auto)" gap={2}>
             <GridItem>
-                <Heading size="sm">Початок</Heading>
+                <Heading size="sm">Дата</Heading>
             </GridItem>
             <GridItem>
-                <Heading size="sm">Кінець</Heading>
+                <Heading size="sm">БР</Heading>
             </GridItem>
             <GridItem>
                 <Heading size="sm">Т/З</Heading>

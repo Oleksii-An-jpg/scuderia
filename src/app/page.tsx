@@ -45,7 +45,6 @@ function P() {
           {on ? <>
               <Create doc={doc} onSubmit={doc => {
                     setDoc(doc);
-                    // Refresh list
                     getAllRoadLists().then(({ data }) => {
                         setDocs(data);
                     });

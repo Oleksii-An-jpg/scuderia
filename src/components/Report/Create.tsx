@@ -1,5 +1,5 @@
 'use client';
-import {FC, useEffect, useMemo} from "react";
+import {FC, Fragment, useEffect} from "react";
 import {
     Card,
     HStack,
@@ -9,15 +9,13 @@ import {
     Heading,
     IconButton,
     VStack,
-    Grid,
     GridItem,
-    Text,
     Button,
-    Separator,
+    Separator, SimpleGrid, Box, Textarea
 } from "@chakra-ui/react";
 import {useForm, useFieldArray, FormProvider} from "react-hook-form";
 import {Mamba, Report} from "@/components/Report/Mamba";
-import {BiPlus, BiTrash} from 'react-icons/bi'
+import {BiCopy, BiPlus, BiSave, BiTrash} from 'react-icons/bi'
 import {RoadList, upsertDoc, Vehicle} from "@/db";
 import {useSearchParams} from "next/navigation";
 
@@ -35,9 +33,9 @@ export const formatMinutes = (totalMinutes: number) => {
     const minutes = totalMinutes % 60;
 
     // Fallback for unsupported browsers
-    if (hours === 0) return `${minutes} хв.`;
-    if (minutes === 0) return `${hours} год.`;
-    return `${hours} год. ${minutes} хв.`;
+    if (hours === 0) return `00:${minutes < 10 ? `0${minutes}` : minutes}`;
+    if (minutes === 0) return `${hours}:00`;
+    return `${hours < 10 ? `0${hours}` : hours}:${minutes < 10 ? `0${minutes}` : minutes}`;
 }
 
 const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
@@ -45,7 +43,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
         defaultValues: doc || {
             records: [
                 {
-                    departure: new Date()
+                    date: new Date(),
                 }
             ]
         }
@@ -62,7 +60,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
             reset({
                 records: [
                     {
-                        departure: new Date()
+                        date: new Date()
                     }
                 ]
             })
@@ -74,13 +72,6 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
     });
 
     const [vehicle, records] = watch(["vehicle", 'records']);
-
-    const { hours, minutes } = useMemo(() => {
-        return {
-            hours: Array.from({ length: 24 }, (_, i) => i),
-            minutes: Array.from({ length: 10 }, (_, i) => i * 6)
-        }
-    }, []);
 
     return (
         <FormProvider {...methods}>
@@ -96,110 +87,84 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                         </Heading>
                     </Card.Header>
                     <Card.Body>
-                        <VStack align="stretch" gap={4}>
-                            <Field.Root invalid={!!errors.vehicle}>
-                                <Field.Label>Транспортний засіб</Field.Label>
-                                <NativeSelect.Root size="xs">
-                                    <NativeSelect.Field
-                                        placeholder="Оберіть транспортний засіб"
-                                        {...register("vehicle", {
-                                            required: true
-                                        })}
-                                    >
-                                        {[Vehicle.MAMBA, Vehicle.KMAR].map((vehicle) => (
-                                            <option key={vehicle} value={vehicle}>
-                                                {vehicle}
-                                            </option>
-                                        ))}
-                                    </NativeSelect.Field>
-                                    <NativeSelect.Indicator />
-                                </NativeSelect.Root>
-                                <Field.ErrorText>{errors.vehicle?.message}</Field.ErrorText>
-                            </Field.Root>
-                            {vehicle && <Grid templateColumns="repeat(12, auto)" gap={2}>
-                                <GridItem>
-                                    <Text textStyle="sm">Вибуття</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Прибуття</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">БР</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Бункеровка</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Холостий хід</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Малий хід</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Слабий хід</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Повний хід</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Усього</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Розхід</Text>
-                                </GridItem>
-                                <GridItem>
-                                    <Text textStyle="sm">Залишок</Text>
-                                </GridItem>
-                                {fields.map((field, index) => {
-                                    return (
-                                        <Grid templateColumns="subgrid" gridColumn="span 12" key={field.id}>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Input size="xs" type="datetime-local" lang="uk-ua" {...register(`records.${index}.departure`, {
-                                                        required: true
-                                                    })} />
-                                                    <Field.ErrorText />
-                                                </Field.Root>
-                                            </GridItem>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Input size="xs" type="datetime-local" lang="uk-ua" {...register(`records.${index}.arrival`, {
-                                                        required: true
-                                                    })} />
-                                                    <Field.ErrorText />
-                                                </Field.Root>
-                                            </GridItem>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Input size="xs" type="number" min={1} {...register(`records.${index}.br`, {
-                                                        valueAsNumber: true,
-                                                        required: true
-                                                    })} />
-                                                    <Field.ErrorText />
-                                                </Field.Root>
-                                            </GridItem>
-                                            <GridItem>
-                                                <Field.Root>
-                                                    <Input size="xs" type="number" {...register(`records.${index}.fueling`, {
-                                                        valueAsNumber: true
-                                                    })} />
-                                                    <Field.ErrorText />
-                                                </Field.Root>
-                                            </GridItem>
-                                            {vehicle === Vehicle.MAMBA && (
-                                                <Mamba index={index} hours={hours} minutes={minutes} />
-                                            )}
-                                            <GridItem>
-                                                <IconButton size="xs" colorPalette="red" onClick={() => remove(index)}><BiTrash /></IconButton>
-                                            </GridItem>
-                                        </Grid>
-                                    )
-                                })}
-                                <GridItem colSpan={12}>
-                                    <Separator />
-                                </GridItem>
-                                {vehicle === Vehicle.MAMBA && <Report records={records} />}
-                            </Grid>}
+                        <VStack align="stretch">
+                            <Box>
+                                <Field.Root invalid={!!errors.vehicle}>
+                                    <Field.Label>🚌 Транспортний засіб</Field.Label>
+                                    <NativeSelect.Root size="xs">
+                                        <NativeSelect.Field
+                                            placeholder="Оберіть транспортний засіб"
+                                            {...register("vehicle", {
+                                                required: true
+                                            })}
+                                        >
+                                            {[Vehicle.MAMBA, Vehicle.KMAR].map((vehicle) => (
+                                                <option key={vehicle} value={vehicle}>
+                                                    {vehicle}
+                                                </option>
+                                            ))}
+                                        </NativeSelect.Field>
+                                        <NativeSelect.Indicator />
+                                    </NativeSelect.Root>
+                                    <Field.ErrorText>{errors.vehicle?.message}</Field.ErrorText>
+                                </Field.Root>
+                            </Box>
+                            <SimpleGrid templateColumns="9em 4.5em 9em repeat(5, 4em) repeat(2,minmax(5em,8em)) 1fr" gap={2} alignItems="end">
+                                {vehicle && <>
+                                    {fields.map((field, index) => {
+                                        return (
+                                            <Fragment key={field.id}>
+                                                <Box>
+                                                    <Field.Root>
+                                                        {index === 0 && <Field.Label>📅 Дата</Field.Label>}
+                                                        <Input size="xs" type="date" lang="uk-ua" {...register(`records.${index}.date`, {
+                                                            required: true
+                                                        })} />
+                                                        <Field.ErrorText />
+                                                    </Field.Root>
+                                                </Box>
+                                                <Box>
+                                                    <Field.Root>
+                                                        {index === 0 && <Field.Label>📋 БР</Field.Label>}
+                                                        <Input size="xs" type="number" min={1} {...register(`records.${index}.br`, {
+                                                            valueAsNumber: true,
+                                                            required: true
+                                                        })} />
+                                                        <Field.ErrorText />
+                                                    </Field.Root>
+                                                </Box>
+                                                <Box>
+                                                    <Field.Root>
+                                                        {index === 0 && <Field.Label>⛽ Бункеровка (л)</Field.Label>}
+                                                        <Input size="xs" type="number" {...register(`records.${index}.fueling`, {
+                                                            valueAsNumber: true
+                                                        })} />
+                                                        <Field.ErrorText />
+                                                    </Field.Root>
+                                                </Box>
+                                                {vehicle === Vehicle.MAMBA && (
+                                                    <Mamba index={index} records={records} />
+                                                )}
+                                                <Box>
+                                                    <Field.Root>
+                                                        {index === 0 && <Field.Label>Коментар</Field.Label>}
+                                                        <Textarea resize="none" maxH="2lh" size="xs" {...register(`records.${index}.comment`)} />
+                                                        <Field.ErrorText />
+                                                    </Field.Root>
+                                                </Box>
+                                                <HStack>
+                                                    <IconButton disabled={records.length === 1} size="xs" colorPalette="red" onClick={() => remove(index)}><BiTrash /></IconButton>
+                                                </HStack>
+                                                <GridItem colSpan={12}>
+                                                    <Separator variant="dashed" />
+                                                </GridItem>
+                                            </Fragment>
+                                        )
+                                    })}
+                                    {vehicle === Vehicle.MAMBA && <Report records={records} />}
+                                </>
+                                }
+                            </SimpleGrid>
                         </VStack>
                     </Card.Body>
                     <Card.Footer>
@@ -208,7 +173,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                                 Додати запис <BiPlus />
                             </Button>
                             <Button loading={isSubmitting} disabled={!isValid} type="submit" size="xs" colorPalette="blue">
-                                Зберегти
+                                Зберегти <BiSave />
                             </Button>
                         </HStack>
                     </Card.Footer>

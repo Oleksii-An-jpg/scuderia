@@ -1,27 +1,23 @@
 import {FC, Fragment, useEffect, useMemo, useCallback} from "react";
-import {Field, GridItem, Heading, HStack, NativeSelect, Text} from "@chakra-ui/react";
+import {Box, Field, GridItem, Heading, Input, Text, VStack} from "@chakra-ui/react";
 import {useFormContext} from "react-hook-form";
 import {convertToDecimalHours, formatMinutes} from "@/components/Report/Create";
+import {getTime, Time} from "@/components/Time";
 import {Record, RoadList} from "@/db";
 
-type Time = {
-    hours: number
-    minutes: number
-}
-
 type Mamba = {
-    idle?: Time;
-    low?: Time;
-    medium?: Time;
-    full?: Time;
+    idle?: string;
+    low?: string;
+    medium?: string;
+    full?: string;
     fueling?: number;
     remaining?: number;
+    total?: string;
 }
 
 type MambaProps = {
     index: number;
-    hours: number[];
-    minutes: number[];
+    records: Record<Mamba>[];
 }
 
 // Consumption rates as constants
@@ -49,10 +45,14 @@ export const Report: FC<ReportProps> = ({ records, options = {
     full: true,
 } }) => {
     const { idle, low, medium, full } = records.reduce((acc, record) => {
-        acc.idle += (record.idle?.hours ?? 0) * 60 + (record.idle?.minutes ?? 0);
-        acc.low += (record.low?.hours ?? 0) * 60 + (record.low?.minutes ?? 0);
-        acc.medium += (record.medium?.hours ?? 0) * 60 + (record.medium?.minutes ?? 0);
-        acc.full += (record.full?.hours ?? 0) * 60 + (record.full?.minutes ?? 0);
+        const idle = parseTime(record.idle)
+        const low = parseTime(record.low)
+        const medium = parseTime(record.medium)
+        const full = parseTime(record.full)
+        acc.idle += (idle?.hours ?? 0) * 60 + (idle?.minutes ?? 0);
+        acc.low += (low?.hours ?? 0) * 60 + (low?.minutes ?? 0);
+        acc.medium += (medium?.hours ?? 0) * 60 + (medium?.minutes ?? 0);
+        acc.full += (full?.hours ?? 0) * 60 + (full?.minutes ?? 0);
         return acc;
     }, {
         idle: 0,
@@ -75,60 +75,61 @@ export const Report: FC<ReportProps> = ({ records, options = {
         }
     }, [idle, low, medium, full]);
     return <>
-        {options.idle && <GridItem colStart={5}>
+        {options.idle && <GridItem gridColumn={4}>
             <Heading size="sm">{formatMinutes(idle)}</Heading>
-            <Heading size="sm">{consumption.idle} л.</Heading>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.idle} л.</Heading>
         </GridItem>}
 
         {options.low && <GridItem>
             <Heading size="sm">{formatMinutes(low)}</Heading>
-            <Heading size="sm">{consumption.low} л.</Heading>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.low} л.</Heading>
         </GridItem>}
         {options.medium && <GridItem>
             <Heading size="sm">{formatMinutes(medium)}</Heading>
-            <Heading size="sm">{consumption.medium} л.</Heading>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.medium} л.</Heading>
         </GridItem>}
-        {options.full && <GridItem>
+        {options.full && <Box>
             <Heading size="sm">{formatMinutes(full)}</Heading>
-            <Heading size="sm">{consumption.full} л.</Heading>
-        </GridItem>}
-        <GridItem>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.full} л.</Heading>
+        </Box>}
+        <Box>
             <Heading size="sm">{formatMinutes(consumption.time)}</Heading>
-        </GridItem>
-        <GridItem>
-            <Heading size="sm">{consumption.total} л.</Heading>
-        </GridItem>
+        </Box>
+        <Box>
+            <Heading size="sm" whiteSpace="nowrap">{consumption.total} л.</Heading>
+        </Box>
     </>
 }
 
-export const Mamba: FC<MambaProps> = ({ index, hours, minutes }) => {
-    const { register, watch, setValue } = useFormContext<RoadList<Mamba>>();
 
-    // Watch only the specific record and previous record to minimize re-renders
-    const currentRecord = watch(`records.${index}`);
-    const previousRecord = watch(`records.${index - 1}`);
 
-    // Memoize hour and minute options to prevent recreation
-    const hourOptions = useMemo(() =>
-        hours.map((hour) => (
-            <option key={hour} value={hour}>
-                {`${hour} год.`}
-            </option>
-        )), [hours]);
+const parseTime = (time?: string) => {
+    if (!time) return { hours: 0, minutes: 0 };
+    const [hours, minutes] = getTime(time);
+    if (isNaN(hours) || isNaN(minutes)) {
+        return { hours: 0, minutes: 0 };
+    }
+    return { hours, minutes };
+}
 
-    const minuteOptions = useMemo(() =>
-        minutes.map((minute) => (
-            <option key={minute} value={minute}>
-                {`${minute} хв.`}
-            </option>
-        )), [minutes]);
+const getTotalMinutes = (time?: string) => {
+    if (!time) return 0;
+    const { hours, minutes } = parseTime(time);
+    return hours * 60 + minutes;
+}
+
+export const Mamba: FC<MambaProps> = ({ index, records }) => {
+    const { setValue, control, register, formState: { errors } } = useFormContext<RoadList<Mamba>>();
+
+    const currentRecord = records[index];
+    const previousRecord = records[index - 1];
 
     // Memoize time calculations with proper dependencies for object mutations
     const timeCalculations = useMemo(() => {
-        const idle = (currentRecord?.idle?.hours ?? 0) * 60 + (currentRecord?.idle?.minutes ?? 0);
-        const low = (currentRecord?.low?.hours ?? 0) * 60 + (currentRecord?.low?.minutes ?? 0);
-        const medium = (currentRecord?.medium?.hours ?? 0) * 60 + (currentRecord?.medium?.minutes ?? 0);
-        const full = (currentRecord?.full?.hours ?? 0) * 60 + (currentRecord?.full?.minutes ?? 0);
+        const idle = getTotalMinutes(currentRecord.idle);
+        const low = getTotalMinutes(currentRecord.low);
+        const medium = getTotalMinutes(currentRecord.medium);
+        const full = getTotalMinutes(currentRecord.full);
 
         const totalMinutes = idle + low + medium + full;
         const totalHours = Math.floor(totalMinutes / 60);
@@ -145,31 +146,35 @@ export const Mamba: FC<MambaProps> = ({ index, hours, minutes }) => {
             }
         };
     }, [
-        currentRecord?.idle?.hours,
-        currentRecord?.idle?.minutes,
-        currentRecord?.low?.hours,
-        currentRecord?.low?.minutes,
-        currentRecord?.medium?.hours,
-        currentRecord?.medium?.minutes,
-        currentRecord?.full?.hours,
-        currentRecord?.full?.minutes
+        currentRecord?.idle,
+        currentRecord?.low,
+        currentRecord?.medium,
+        currentRecord?.full
     ]);
 
+    useEffect(() => {
+        setValue(`records.${index}.total`, `${timeCalculations.total.hours}:${timeCalculations.total.minutes < 10 ? `0${timeCalculations.total.minutes}` : timeCalculations.total.minutes}`, {
+            shouldValidate: true
+        });
+    }, [timeCalculations]);
+
     // Memoize decimal calculations with proper dependencies
-    const decimalTimes = useMemo(() => ({
-        idle: convertToDecimalHours(currentRecord?.idle?.hours ?? 0, currentRecord?.idle?.minutes ?? 0),
-        low: convertToDecimalHours(currentRecord?.low?.hours ?? 0, currentRecord?.low?.minutes ?? 0),
-        medium: convertToDecimalHours(currentRecord?.medium?.hours ?? 0, currentRecord?.medium?.minutes ?? 0),
-        full: convertToDecimalHours(currentRecord?.full?.hours ?? 0, currentRecord?.full?.minutes ?? 0)
-    }), [
-        currentRecord?.idle?.hours,
-        currentRecord?.idle?.minutes,
-        currentRecord?.low?.hours,
-        currentRecord?.low?.minutes,
-        currentRecord?.medium?.hours,
-        currentRecord?.medium?.minutes,
-        currentRecord?.full?.hours,
-        currentRecord?.full?.minutes
+    const decimalTimes = useMemo(() => {
+        const idle = parseTime(currentRecord.idle);
+        const low = parseTime(currentRecord.low);
+        const medium = parseTime(currentRecord.medium);
+        const full = parseTime(currentRecord.full);
+        return {
+            idle: convertToDecimalHours(idle.hours, idle.minutes),
+            low: convertToDecimalHours(low.hours, low.minutes),
+            medium: convertToDecimalHours(medium.hours, medium.minutes),
+            full: convertToDecimalHours(full.hours, full.minutes)
+        }
+    }, [
+        currentRecord?.idle,
+        currentRecord?.low,
+        currentRecord?.medium,
+        currentRecord?.full
     ]);
 
     // Memoize consumption calculation
@@ -193,118 +198,45 @@ export const Mamba: FC<MambaProps> = ({ index, hours, minutes }) => {
         updateRemaining();
     }, [updateRemaining]);
 
-    // Memoize register calls
-    const registerIdle = useMemo(() => ({
-        hours: register(`records.${index}.idle.hours`, { valueAsNumber: true }),
-        minutes: register(`records.${index}.idle.minutes`, { valueAsNumber: true })
-    }), [register, index]);
-
-    const registerLow = useMemo(() => ({
-        hours: register(`records.${index}.low.hours`, { valueAsNumber: true }),
-        minutes: register(`records.${index}.low.minutes`, { valueAsNumber: true })
-    }), [register, index]);
-
-    const registerMedium = useMemo(() => ({
-        hours: register(`records.${index}.medium.hours`, { valueAsNumber: true }),
-        minutes: register(`records.${index}.medium.minutes`, { valueAsNumber: true })
-    }), [register, index]);
-
-    const registerFull = useMemo(() => ({
-        hours: register(`records.${index}.full.hours`, { valueAsNumber: true }),
-        minutes: register(`records.${index}.full.minutes`, { valueAsNumber: true })
-    }), [register, index]);
-
     return (
         <Fragment>
-            <Field.Root>
-                <HStack w="100%">
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerIdle.hours}>
-                            {hourOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerIdle.minutes}>
-                            {minuteOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                </HStack>
-                <Field.ErrorText />
-            </Field.Root>
+            <Time name={`records.${index}.idle`} control={control} label={index === 0 ? `ХХ` : null} />
+            <Time name={`records.${index}.low`} control={control} label={index === 0 ? `МХ` : null} />
+            <Time name={`records.${index}.medium`} control={control} label={index === 0 ?`СХ` : null} />
+            <Time name={`records.${index}.full`} control={control} label={index === 0 ? `ПХ` : null} />
 
-            <Field.Root>
-                <HStack w="100%">
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerLow.hours}>
-                            {hourOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerLow.minutes}>
-                            {minuteOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                </HStack>
-                <Field.ErrorText />
-            </Field.Root>
+            <VStack gap={1.5}>
+                <Field.Root invalid={!!errors?.records?.[index]?.total}>
+                    {index === 0 && <Field.Label>Час</Field.Label>}
+                    <Field.ErrorText>{errors?.records?.[index]?.total?.message}</Field.ErrorText>
+                    <Input disabled variant="subtle" size="xs" {...register(`records.${index}.total`, {
+                        validate: (value) => {
+                            if (value) {
+                                const [hours, minutes] = getTime(value);
 
-            <Field.Root>
-                <HStack w="100%">
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerMedium.hours}>
-                            {hourOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerMedium.minutes}>
-                            {minuteOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                </HStack>
-                <Field.ErrorText />
-            </Field.Root>
+                                const totalMinutes = hours * 60 + minutes;
+                                return totalMinutes % 6 === 0;
+                            }
 
-            <Field.Root>
-                <HStack w="100%">
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerFull.hours}>
-                            {hourOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <NativeSelect.Root size="xs">
-                        <NativeSelect.Field {...registerFull.minutes}>
-                            {minuteOptions}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                </HStack>
-                <Field.ErrorText />
-            </Field.Root>
+                            return true
+                        }
+                    })} />
+                </Field.Root>
+            </VStack>
 
-            <GridItem alignSelf="center">
-                <Text fontWeight="bold" whiteSpace="nowrap">
-                    {`${timeCalculations.total.hours} год. ${timeCalculations.total.minutes} хв.`}
+            <VStack>
+                {index === 0 && <Text textStyle="sm" whiteSpace="nowrap">Розхід (л)</Text>}
+                <Text whiteSpace="nowrap" lineHeight="2">
+                    {consumption}
                 </Text>
-            </GridItem>
+            </VStack>
 
-            <GridItem alignSelf="center">
-                <Text fontWeight="bold" whiteSpace="nowrap">
-                    {consumption} л.
+            <VStack>
+                {index === 0 && <Text textStyle="sm" whiteSpace="nowrap">Залишок (л)</Text>}
+                <Text whiteSpace="nowrap" lineHeight="2">
+                    {remaining}
                 </Text>
-            </GridItem>
-
-            <GridItem alignSelf="center">
-                <Text fontWeight="bold" whiteSpace="nowrap">
-                    {remaining} л.
-                </Text>
-            </GridItem>
+            </VStack>
         </Fragment>
     );
 };

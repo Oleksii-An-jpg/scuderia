@@ -49,7 +49,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
         }
     });
 
-    const { register, control, formState: { errors, isValid, isSubmitting }, watch, handleSubmit, reset } = methods;
+    const { register, control, formState: { errors, isValid, isDirty, isSubmitting }, watch, handleSubmit, reset } = methods;
 
     const params = useSearchParams();
     const id = params.get('id');
@@ -172,7 +172,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                             <Button size="xs" onClick={() => append({})} colorPalette="green" disabled={!vehicle}>
                                 Додати запис <BiPlus />
                             </Button>
-                            <Button loading={isSubmitting} disabled={!isValid} type="submit" size="xs" colorPalette="blue">
+                            <Button loading={isSubmitting} disabled={!isValid || !isDirty} type="submit" size="xs" colorPalette="blue">
                                 Зберегти <BiSave />
                             </Button>
                         </HStack>

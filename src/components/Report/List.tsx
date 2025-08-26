@@ -45,6 +45,11 @@ const Item: FC<{ doc: RoadList, active: boolean }> = ({ doc, active }) => {
             full: false,
         }} />
         <GridItem>
+            <Text textStyle="sm">
+                {doc.vehicle}
+            </Text>
+        </GridItem>
+        <GridItem>
             <IconButton asChild size="xs" variant="outline">
                 <ChakraLink asChild>
                     <NextLink href={`/?id=${doc.id}`}>

@@ -75,7 +75,7 @@ export const Report: FC<ReportProps> = ({ records, options = {
         }
     }, [idle, low, medium, full]);
     return <>
-        {options.idle && <GridItem gridColumn={4}>
+        {options.idle && <GridItem gridColumn={4} alignItems="center">
             <Heading size="sm">{formatMinutes(idle)}</Heading>
             <Heading size="sm" whiteSpace="nowrap">{consumption.idle} л.</Heading>
         </GridItem>}
@@ -96,7 +96,7 @@ export const Report: FC<ReportProps> = ({ records, options = {
             <Heading size="sm">{formatMinutes(consumption.time)}</Heading>
         </Box>
         <Box>
-            <Heading size="sm" whiteSpace="nowrap">{consumption.total} л.</Heading>
+            <Heading textAlign="center" size="sm" whiteSpace="nowrap">{consumption.total}</Heading>
         </Box>
     </>
 }

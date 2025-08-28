@@ -2,7 +2,7 @@ import {FC, Fragment, useEffect, useMemo, useCallback} from "react";
 import {Box, Field, GridItem, Heading, Input, Text, VStack} from "@chakra-ui/react";
 import {useFormContext} from "react-hook-form";
 import {convertToDecimalHours, formatMinutes} from "@/components/Report/Create";
-import {getTime, Time} from "@/components/Time";
+import {getTime, parseTime, Time} from "@/components/Time";
 import {Record, RoadList} from "@/db";
 
 type Mamba = {
@@ -13,14 +13,20 @@ type Mamba = {
     fueling?: number;
     remaining?: number;
     total?: string;
+
+    leftEngineHours?: string;
+    rightEngineHours?: string;
 }
 
 type MambaProps = {
     index: number;
     records: Record<Mamba>[];
+    usage: {
+        hours: number;
+        minutes: number;
+    }
 }
 
-// Consumption rates as constants
 const CONSUMPTION_RATES = {
     idle: 6.3,
     low: 31.2,
@@ -101,24 +107,13 @@ export const Report: FC<ReportProps> = ({ records, options = {
     </>
 }
 
-
-
-const parseTime = (time?: string) => {
-    if (!time) return { hours: 0, minutes: 0 };
-    const [hours, minutes] = getTime(time);
-    if (isNaN(hours) || isNaN(minutes)) {
-        return { hours: 0, minutes: 0 };
-    }
-    return { hours, minutes };
-}
-
 const getTotalMinutes = (time?: string) => {
     if (!time) return 0;
     const { hours, minutes } = parseTime(time);
     return hours * 60 + minutes;
 }
 
-export const Mamba: FC<MambaProps> = ({ index, records }) => {
+export const Mamba: FC<MambaProps> = ({ index, records, usage }) => {
     const { setValue, control, register, formState: { errors } } = useFormContext<RoadList<Mamba>>();
 
     const currentRecord = records[index];
@@ -156,7 +151,16 @@ export const Mamba: FC<MambaProps> = ({ index, records }) => {
         setValue(`records.${index}.total`, `${timeCalculations.total.hours}:${timeCalculations.total.minutes < 10 ? `0${timeCalculations.total.minutes}` : timeCalculations.total.minutes}`, {
             shouldValidate: true
         });
-    }, [timeCalculations]);
+        let totalUsage = '';
+        if (usage.hours === 0 && usage.minutes === 0 && previousRecord?.total) {
+            const {hours, minutes} = parseTime(previousRecord.total)
+            totalUsage = formatMinutes((timeCalculations.total.hours + hours) * 60 + (timeCalculations.total.minutes + minutes));
+        } else {
+            totalUsage = formatMinutes((usage.hours + timeCalculations.total.hours) * 60 + usage.minutes + timeCalculations.total.minutes);
+        }
+        setValue(`records.${index}.leftEngineHours`, totalUsage);
+        setValue(`records.${index}.rightEngineHours`, totalUsage);
+    }, [timeCalculations, previousRecord?.total]);
 
     // Memoize decimal calculations with proper dependencies
     const decimalTimes = useMemo(() => {
@@ -240,6 +244,20 @@ export const Mamba: FC<MambaProps> = ({ index, records }) => {
                 <Text whiteSpace="nowrap" lineHeight="2">
                     {remaining}
                 </Text>
+            </VStack>
+
+            <VStack align="stretch" gap={1.5}>
+                <Field.Root>
+                    {index === 0 && <Field.Label>Л Мотор</Field.Label>}
+                    <Input disabled variant="subtle" size="xs" {...register(`records.${index}.leftEngineHours`)} />
+                </Field.Root>
+            </VStack>
+
+            <VStack align="stretch" gap={1.5}>
+                <Field.Root>
+                    {index === 0 && <Field.Label>П Мотор</Field.Label>}
+                    <Input disabled variant="subtle" size="xs" {...register(`records.${index}.rightEngineHours`)} />
+                </Field.Root>
             </VStack>
         </Fragment>
     );

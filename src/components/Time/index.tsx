@@ -7,6 +7,15 @@ export const getTime = (time: string) => {
     return  time.split(':').map(Number);
 }
 
+export const parseTime = (time?: string) => {
+    if (!time) return { hours: 0, minutes: 0 };
+    const [hours, minutes] = getTime(time);
+    if (isNaN(hours) || isNaN(minutes)) {
+        return { hours: 0, minutes: 0 };
+    }
+    return { hours, minutes };
+}
+
 const getRandomInt = (min: number, max: number) => {
     min = Math.ceil(min);
     max = Math.floor(max);

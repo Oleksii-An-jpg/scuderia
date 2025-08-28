@@ -9,7 +9,7 @@ import {
     WithFieldValue,
     DocumentData,
     QueryDocumentSnapshot,
-    SnapshotOptions, getDocs, getDoc, deleteDoc
+    SnapshotOptions, getDocs, getDoc, deleteDoc,query, orderBy,
 } from "firebase/firestore";
 
 const app = initializeApp({
@@ -24,6 +24,8 @@ export type BaseRecord = {
     br?: number;
     remaining?: number;
     total?: string;
+    leftEngineHours?: string;
+    rightEngineHours?: string;
 };
 
 export enum Vehicle {
@@ -37,6 +39,7 @@ export type RoadList<T extends BaseRecord = BaseRecord> = {
     vehicle: Vehicle;
     records: Record<T>[];
     id?: string
+    latestDate: Date;
 };
 
 const roadListConverter = {
@@ -63,7 +66,7 @@ export async function upsertDoc(
 ): Promise<DocumentReference<RoadList>> {
     if (id) {
         // Fixed ID → upsert
-        const docRef = doc(roadListsRef, id); // 👈 use the provided collectionRef
+        const docRef = doc(roadListsRef, id);
         await setDoc(docRef, data, { merge: true });
         return docRef;
     } else {
@@ -89,7 +92,8 @@ export async function getDocById(id: string) {
 
 export async function getAllRoadLists() {
     try {
-        const querySnapshot = await getDocs(roadListsRef);
+        const q = query(roadListsRef, orderBy('latestDate', 'desc'));
+        const querySnapshot = await getDocs(q);
         const roadLists: RoadList[] = [];
 
         querySnapshot.forEach((doc) => {

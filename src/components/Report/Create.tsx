@@ -22,6 +22,10 @@ import {useSearchParams} from "next/navigation";
 type CreateProps = {
     doc?: RoadList
     onSubmit: (doc: RoadList) => void
+    usageUntilDoc: (id?: string) => {
+        mamba: { hours: number; minutes: number; }
+        kmar: { hours: number; minutes: number; }
+    }
 }
 
 export const convertToDecimalHours = (hours: number, minutes: number): number => {
@@ -32,13 +36,12 @@ export const formatMinutes = (totalMinutes: number) => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
 
-    // Fallback for unsupported browsers
     if (hours === 0) return `00:${minutes < 10 ? `0${minutes}` : minutes}`;
     if (minutes === 0) return `${hours}:00`;
     return `${hours < 10 ? `0${hours}` : hours}:${minutes < 10 ? `0${minutes}` : minutes}`;
 }
 
-const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
+const Create: FC<CreateProps> = ({ doc, usageUntilDoc, onSubmit }) => {
     const methods = useForm<RoadList>({
         defaultValues: doc || {
             records: [
@@ -53,6 +56,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
 
     const params = useSearchParams();
     const id = params.get('id');
+
     useEffect(() => {
         reset(doc);
 
@@ -77,7 +81,11 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
         <FormProvider {...methods}>
             <form onSubmit={handleSubmit(async (data) => {
                 const { id, ...rest } = data;
-                await upsertDoc(rest, id);
+                const latestDate = new Date(Math.max(...data.records.map(record => record.date ? new Date(record.date).getTime() : 0)));
+                await upsertDoc({
+                    ...rest,
+                    latestDate
+                }, id);
                 onSubmit(data);
             })}>
                 <Card.Root>
@@ -109,7 +117,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                                     <Field.ErrorText>{errors.vehicle?.message}</Field.ErrorText>
                                 </Field.Root>
                             </Box>
-                            <SimpleGrid templateColumns="9em 4.5em 9em repeat(5, 4em) repeat(2,minmax(5em,8em)) 1fr" gap={2} alignItems="end">
+                            <SimpleGrid templateColumns="9em 4.5em 9em repeat(5, 4em) repeat(2,5em) repeat(2,4em) 1fr" gap={2} alignItems="end">
                                 {vehicle && <>
                                     {fields.map((field, index) => {
                                         return (
@@ -143,7 +151,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                                                     </Field.Root>
                                                 </Box>
                                                 {vehicle === Vehicle.MAMBA && (
-                                                    <Mamba index={index} records={records} />
+                                                    <Mamba usage={usageUntilDoc(doc?.id).mamba} index={index} records={records} />
                                                 )}
                                                 <Box>
                                                     <Field.Root>
@@ -155,7 +163,7 @@ const Create: FC<CreateProps> = ({ doc, onSubmit }) => {
                                                 <HStack>
                                                     <IconButton disabled={records.length === 1} size="xs" colorPalette="red" onClick={() => remove(index)}><BiTrash /></IconButton>
                                                 </HStack>
-                                                <GridItem colSpan={12}>
+                                                <GridItem colSpan={15}>
                                                     <Separator variant="dashed" />
                                                 </GridItem>
                                             </Fragment>

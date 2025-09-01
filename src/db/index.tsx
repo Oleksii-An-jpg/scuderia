@@ -9,7 +9,12 @@ import {
     WithFieldValue,
     DocumentData,
     QueryDocumentSnapshot,
-    SnapshotOptions, getDocs, getDoc, deleteDoc,query, orderBy,
+    SnapshotOptions,
+    getDocs,
+    getDoc,
+    deleteDoc,
+    query,
+    orderBy, Timestamp,
 } from "firebase/firestore";
 
 const app = initializeApp({
@@ -17,47 +22,60 @@ const app = initializeApp({
     apiKey: "AIzaSyDjgyzE4AUL_ssOkL791sUBNNBnelljXpM",
 });
 
-export type BaseRecord = {
-    date?: Date;
-    comment?: string
-    fueling?: number;
-    br?: number;
-    remaining?: number;
-    total?: string;
-    leftEngineHours?: string;
-    rightEngineHours?: string;
-};
-
 export enum Vehicle {
     KMAR = "Kmar",
     MAMBA = "Mamba",
 }
 
-export type Record<T extends BaseRecord> = T;
-
-export type RoadList<T extends BaseRecord = BaseRecord> = {
-    vehicle: Vehicle;
-    records: Record<T>[];
-    id?: string
-    latestDate: Date;
+export type BaseItinerary = {
+    date: string;
+    br: number | null;
+    fuel: number | null;
 };
+
+export type Itinerary<T extends BaseItinerary> = T;
+
+export type RoadList<T extends BaseItinerary = BaseItinerary> = {
+    itineraries: Itinerary<T>[];
+    id?: string;
+    start: Date;
+    end: Date;
+    vehicle: Vehicle;
+    fuel: number;
+};
+
+export type RoadListFS<T extends BaseItinerary = BaseItinerary> = Omit<RoadList<T>, 'start' | 'end'> & {
+    start: Timestamp;
+    end: Timestamp;
+}
+
+export const formatDate = (date: Date) => {
+    return date.toISOString().split("T")[0];
+}
 
 const roadListConverter = {
     toFirestore(roadList: RoadList): DocumentData {
-        const records = roadList.records.map(record => {
-            return Object.fromEntries(
-                Object.entries(record).filter(([_, value]) => value !== undefined)
-            );
-        })
-        return { ...roadList, records };
+        const start = new Date(roadList.itineraries[0].date);
+        const end = new Date(roadList.itineraries[roadList.itineraries.length - 1].date);
+        return {
+            ...roadList,
+            start,
+            end,
+        };
     },
-    fromFirestore(snapshot: QueryDocumentSnapshot<RoadList>, options: SnapshotOptions): RoadList {
-        return snapshot.data(options);
+    fromFirestore(snapshot: QueryDocumentSnapshot<RoadListFS>, options: SnapshotOptions): RoadList {
+        const data = snapshot.data(options);
+
+        return {
+            ...data,
+            id: snapshot.id,
+            start: data.start.toDate(),
+            end: data.end.toDate(),
+        };
     },
 };
 
 export const db = getFirestore(app);
-
 export const roadListsRef = collection(db, "road-lists").withConverter(roadListConverter);
 
 export async function upsertDoc(
@@ -65,7 +83,6 @@ export async function upsertDoc(
     id?: string
 ): Promise<DocumentReference<RoadList>> {
     if (id) {
-        // Fixed ID → upsert
         const docRef = doc(roadListsRef, id);
         await setDoc(docRef, data, { merge: true });
         return docRef;
@@ -90,21 +107,17 @@ export async function getDocById(id: string) {
     }
 }
 
+// Optimized query with proper sorting by latestDate
 export async function getAllRoadLists() {
     try {
-        const q = query(roadListsRef, orderBy('latestDate', 'desc'));
+        const q = query(roadListsRef, orderBy('end', 'desc'));
         const querySnapshot = await getDocs(q);
-        const roadLists: RoadList[] = [];
-
-        querySnapshot.forEach((doc) => {
-            roadLists.push({
+        return { success: true, data: querySnapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data()
-            });
-        });
-
-        return { success: true, data: roadLists };
+            })) };
     } catch (error) {
+        console.error("Error fetching road lists:", error);
         return { success: false, error: error };
     }
 }

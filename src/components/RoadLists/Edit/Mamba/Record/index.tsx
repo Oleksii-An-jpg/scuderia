@@ -3,7 +3,6 @@ import {FC, useEffect, useMemo, useState} from "react";
 import {UseFieldArrayRemove, useFormContext} from "react-hook-form";
 import {formatDecimalHours, parseUsage} from "@/components/RoadLists/Edit/Mamba";
 import {
-    Alert,
     Badge,
     Button,
     Collapsible,
@@ -122,12 +121,6 @@ const Record: FC<RecordProps> = ({ index, aggregation, remove }) => {
     return (
         <Collapsible.Root asChild onOpenChange={setOpen}>
             <Grid templateColumns="subgrid" gridColumn="span 13" gap={2}>
-                {errors.itineraries?.[index]?.total && <GridItem colSpan={6}>
-                    <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Title>{errors?.itineraries?.[index]?.total?.message}</Alert.Title>
-                    </Alert.Root>
-                </GridItem>}
                 <Field.Root>
                     <Input variant="subtle" type="date" size="xs" {...register(`itineraries.${index}.date`, {
                         required: true,

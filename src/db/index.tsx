@@ -42,6 +42,7 @@ export type RoadList<T extends BaseItinerary = BaseItinerary> = {
     end: Date;
     vehicle: Vehicle;
     fuel: number;
+    comment?: string;
 };
 
 export type RoadListFS<T extends BaseItinerary = BaseItinerary> = Omit<RoadList<T>, 'start' | 'end'> & {

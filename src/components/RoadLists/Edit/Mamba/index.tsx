@@ -2,9 +2,9 @@
 import {FC, useEffect, useMemo, useState} from "react";
 import {BaseItinerary, RoadList, upsertDoc, Vehicle} from "@/db";
 import {FormProvider, useFieldArray, useForm} from "react-hook-form";
-import {Button, Field, Grid, GridItem, Heading, HStack, Input, Text, VStack} from "@chakra-ui/react";
+import {Button, Field, Grid, GridItem, Heading, HStack, Input, Separator, Text, VStack} from "@chakra-ui/react";
 import Record, {getUsage} from "@/components/RoadLists/Edit/Mamba/Record";
-import {BiPlus, BiSave} from "react-icons/bi";
+import {BiPlus, BiSave, BiSolidFilePdf} from "react-icons/bi";
 import {getDoc} from "firebase/firestore";
 import {MambaRoadList} from "@/components/RoadLists";
 
@@ -12,14 +12,26 @@ export function parseUsage(value: number | null) {
     return typeof value !== 'number' || isNaN(value) ? 0 : value
 }
 
+export function getTotalFueling(doc: MambaRoadList) {
+    return doc.itineraries.reduce((acc, it) => {
+        const usage = getUsage(it);
+        acc = acc + (it.fuel || 0) - usage;
+        return acc;
+    }, doc.fuel || 0)
+}
+
 export function getTotalUsage(doc: MambaRoadList) {
     return doc.itineraries.reduce((acc, it) => {
-        acc += it.hh || 0;
-        acc += it.mh || 0;
-        acc += it.sh || 0;
-        acc += it.ph || 0;
+        acc.time += it.hh || 0;
+        acc.time += it.mh || 0;
+        acc.time += it.sh || 0;
+        acc.time += it.ph || 0;
+        acc.fuel += getUsage(it);
         return acc;
-    }, 0)
+    }, {
+        time: 0,
+        fuel: 0
+    })
 }
 
 export function formatDecimalHours(value: number) {
@@ -65,7 +77,7 @@ const DEFAULT: MambaRoadList = {
             ph: null,
             br: null,
             total: null,
-            fuel: 0,
+            fuel: null,
         }
     ]
 }
@@ -79,51 +91,60 @@ type MambaFormUsage = {
 
 type MambaFormValues = RoadList<BaseItinerary & MambaFormUsage & {
     total: string | null;
-}>;
+}> & {
+    left?: string | null;
+    right?: string | null;
+};
 
 const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
     const doc = useMemo(() => {
         return docs.find(d => d.id === docID) || DEFAULT
     }, [docs, docID]);
-    const methods = useForm<MambaFormValues>({
-        defaultValues: parseFSDoc(doc)
-    });
-    const { control, handleSubmit, getValues, formState: { isSubmitting }, reset, subscribe, register } = methods
-    const [spent, setSpent] = useState<{
-        hh: number;
-        mh: number;
-        sh: number;
-        ph: number;
-        fullTime: number;
-        remaining: number[];
-        spent: number;
-        usage: number[]
-        total: number[]
-        consumption: number[];
-    }>({
-        hh: 0,
-        mh: 0,
-        sh: 0,
-        ph: 0,
-        spent: 0,
-        remaining: [],
-        consumption: [],
-        usage: [],
-        total: [],
-        fullTime: 0
-    });
-    const aggregation = useMemo(() => {
+    const {aggregation, fueling} = useMemo(() => {
         const index = docs.findIndex(d => d.id === doc.id);
         const slice = doc.id ? docs.slice(index + 1) : docs;
-        return slice.reduce((acc, doc) => {
-            acc += getTotalUsage(doc);
+        const fueling = slice.reduce((acc, doc) => {
+            acc += getTotalFueling(doc);
+            return acc;
+        }, 0);
+        const aggregation = slice.reduce((acc, doc) => {
+            acc += getTotalUsage(doc).time;
             return acc;
         }, 0);
 
+        return {
+            aggregation,
+            fueling
+        }
+
     }, [docs, doc]);
+    const methods = useForm<MambaFormValues>({
+        defaultValues: {
+            ...parseFSDoc(doc),
+            ...(!docID && {
+                fuel: Math.floor(fueling * 100) / 100,
+            }),
+            left: formatDecimalHours(aggregation),
+            right: formatDecimalHours(aggregation),
+        }
+    });
+    const { control, handleSubmit, getValues, formState: { isSubmitting }, reset, subscribe, register } = methods
+    const [hh, setHH] = useState(0);
+    const [mh, setMH] = useState(0);
+    const [sh, setSH] = useState(0);
+    const [ph, setPH] = useState(0);
+    const [spent, setSpent] = useState(0);
+    const [fullTime, setFullTime] = useState(0);
 
     useEffect(() => {
-        reset(parseFSDoc(doc));
+        reset({
+            ...parseFSDoc(doc),
+            ...(!docID && {
+                fuel: Math.floor(fueling * 100) / 100,
+            }),
+            left: formatDecimalHours(aggregation),
+            right: formatDecimalHours(aggregation),
+        });
     }, [doc]);
 
     useEffect(() => {
@@ -132,14 +153,9 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                 values: true,
             },
             callback: ({ values }) => {
-                const { totals, remaining, spent, usage, total, fullTime, consumption } = values.itineraries.reduce<{
+                const { totals, spent, fullTime } = values.itineraries.reduce<{
                     totals: { hh: number; mh: number; sh: number; ph: number };
-                    remaining: number[];
-                    usage: number[];
-                    total: number[];
-                    consumption: number[];
                     spent: number;
-                    prev: number;
                     fullTime: number;
                 }>(
                     (acc, it) => {
@@ -159,50 +175,30 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                             sh: acc.totals.sh + rowUsage.sh,
                             ph: acc.totals.ph + rowUsage.ph,
                         };
-
-                        const remaining = acc.prev + (it.fuel || 0) - spent;
-
-                        acc.remaining.push(Math.floor(remaining * 100) / 100);
-                        acc.usage.push(total + aggregation)
-                        acc.total.push(total);
-                        acc.consumption.push(spent);
-                        acc.prev = remaining;
                         acc.spent += spent;
                         acc.fullTime += total;
                         return acc;
                     },
                     {
                         totals: { hh: 0, mh: 0, sh: 0, ph: 0 },
-                        remaining: [],
-                        usage: [],
-                        total: [],
-                        consumption: [],
                         spent: 0,
-                        prev: values.fuel,
-                        fullTime: 0
+                        fullTime: 0,
                     }
                 );
 
-                setSpent((prev) => ({
-                    ...prev,
-                    ...totals
-                }))
-                // setSpent({
-                //     ...totals,
-                //     remaining,
-                //     spent,
-                //     usage,
-                //     total,
-                //     fullTime,
-                //     consumption,
-                // });
+                setHH(totals.hh);
+                setMH(totals.mh);
+                setSH(totals.sh);
+                setPH(totals.ph);
+                setSpent(Math.floor(spent * 100) / 100);
+                setFullTime(fullTime);
             },
         })
 
         return () => callback()
     }, [subscribe]);
 
-    const { fields, append } = useFieldArray({
+    const { fields, append, remove } = useFieldArray({
         control,
         name: "itineraries"
     });
@@ -219,7 +215,7 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                 onUpsert(updates.data() as unknown as MambaRoadList, updates.id);
             }
         })}>
-            <VStack alignItems="stretch">
+            <VStack alignItems="stretch" gap={4}>
                 {doc ? <Heading size="sm">Дорожній лист від {new Intl.DateTimeFormat('uk-UA', {
                     month: '2-digit',
                     day: '2-digit',
@@ -233,47 +229,36 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                     <Field.Root>
                         <Field.Root>
                             <Field.Label>
-                                <Field.RequiredIndicator />
                                 Паливо на початок зміни (л)
                             </Field.Label>
-                            <Input autoComplete="off" {...register('fuel', {
-                                required: true,
+                            <Input size="xs" autoComplete="off" {...register('fuel', {
                                 valueAsNumber: true,
                             })} />
-                            <Field.HelperText />
-                            <Field.ErrorText />
                         </Field.Root>
                     </Field.Root>
                     <Field.Root>
                         <Field.Root>
                             <Field.Label>
-                                <Field.RequiredIndicator />
                                 Напрацювання на початок зміни Л Мотор (год)
                             </Field.Label>
-                            {/*<Input {...register('fuel', {*/}
-                            {/*    required: true,*/}
-                            {/*    valueAsNumber: true,*/}
-                            {/*})} />*/}
-                            <Field.HelperText />
-                            <Field.ErrorText />
+                            <Input disabled autoComplete="off" size="xs" {...register("left")} />
                         </Field.Root>
                     </Field.Root>
                     <Field.Root>
                         <Field.Root>
                             <Field.Label>
-                                <Field.RequiredIndicator />
                                 Напрацювання на початок зміни П Мотор (год)
                             </Field.Label>
-                            {/*<Input {...register('fuel', {*/}
-                            {/*    required: true,*/}
-                            {/*    valueAsNumber: true,*/}
-                            {/*})} />*/}
-                            <Field.HelperText />
-                            <Field.ErrorText />
+                            <Input disabled autoComplete="off" size="xs" {...register("right")} />
                         </Field.Root>
                     </Field.Root>
                 </HStack>
-                <Grid templateColumns="1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr" gap={2} alignItems="end">
+                <HStack>
+                    <Separator flex="1" />
+                    <Text flexShrink="0" textStyle="md" fontWeight="bold">Записи</Text>
+                    <Separator flex="1" />
+                </HStack>
+                <Grid templateColumns="7em max-content max-content repeat(5,4em) repeat(2,auto) repeat(3,max-content)" rowGap={2} columnGap={4} alignItems="end">
                     <GridItem>
                         <Text textStyle="sm" fontWeight="bold">
                             Дата
@@ -304,35 +289,30 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                     <GridItem><Text textStyle="sm" fontWeight="bold">Залишок</Text></GridItem>
                     <GridItem><Text textStyle="sm" fontWeight="bold">Л Мотор</Text></GridItem>
                     <GridItem><Text textStyle="sm" fontWeight="bold">П Мотор</Text></GridItem>
-                    {fields.map((field, index) => {
-                        const remaining = spent.remaining[index] || 0;
-                        const total = spent.total[index] || 0;
-                        const usage = spent.usage[index] || 0;
-                        const consumption = spent.consumption[index] || 0;
-
-                        return <Record key={field.id} remaining={remaining} consumption={consumption} usage={usage} index={index} total={total} aggregation={aggregation} />
-                    })}
-                    <GridItem colStart={4} px={2}>
-                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(spent.hh)}</Text>
-                    </GridItem>
-                    <GridItem px={2}>
-                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(spent.mh)}</Text>
-                    </GridItem>
-                    <GridItem px={2}>
-                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(spent.sh)}</Text>
-                    </GridItem>
-                    <GridItem px={2}>
-                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(spent.ph)}</Text>
-                    </GridItem>
-                    <GridItem px={2}>
-                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(spent.fullTime)}</Text>
+                    <GridItem><Text textStyle="sm" fontWeight="bold">Дії</Text></GridItem>
+                    {fields.map((field, index) => <Record key={field.id} remove={remove} aggregation={aggregation} index={index} />)}
+                    <GridItem colStart={3}><Text textStyle="sm" fontWeight="bold">Разом:</Text></GridItem>
+                    <GridItem>
+                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(hh)}</Text>
                     </GridItem>
                     <GridItem>
-                        <Text textStyle="sm" fontWeight="bold">{spent.spent}</Text>
+                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(mh)}</Text>
                     </GridItem>
-                    <Grid templateColumns="subgrid" gridColumn="span 9" gap={2}>
+                    <GridItem>
+                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(sh)}</Text>
+                    </GridItem>
+                    <GridItem>
+                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(ph)}</Text>
+                    </GridItem>
+                    <GridItem>
+                        <Text textStyle="sm" fontWeight="bold">{formatDecimalHours(fullTime)}</Text>
+                    </GridItem>
+                    <GridItem>
+                        <Text textStyle="sm" fontWeight="bold">{spent}</Text>
+                    </GridItem>
+                    <Grid templateColumns="subgrid" gridColumn="span 13" gap={2}>
                         <HStack>
-                            <Button size="xs" colorPalette="green" onClick={() => {
+                            <Button size="xs" colorPalette="blue" onClick={() => {
                                 const itineraries = getValues('itineraries');
                                 const last = itineraries[itineraries.length - 1];
                                 const date = new Date(last.date);
@@ -344,11 +324,12 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                                     ph: null,
                                     total: null,
                                     br: null,
-                                    fuel: 0,
+                                    fuel: null,
                                     date: formatDate(date),
                                 });
-                            }}>Додати запис <BiPlus /></Button>
-                            <Button colorPalette="blue" size="xs" loading={isSubmitting} type="submit">Зберегти <BiSave /></Button>
+                            }}><BiPlus /> Додати запис</Button>
+                            <Button size="xs" loading={isSubmitting} type="submit"><BiSave /> Зберегти</Button>
+                            <Button size="xs" disabled><BiSolidFilePdf /> Експортувати</Button>
                         </HStack>
                     </Grid>
                 </Grid>

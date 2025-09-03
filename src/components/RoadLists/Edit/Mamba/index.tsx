@@ -128,7 +128,7 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
             right: formatDecimalHours(aggregation),
         }
     });
-    const { control, handleSubmit, getValues, formState: { isSubmitting }, reset, subscribe, register } = methods
+    const { control, handleSubmit, getValues, formState: { isSubmitting, isValid }, reset, subscribe, register } = methods
     const [hh, setHH] = useState(0);
     const [mh, setMH] = useState(0);
     const [sh, setSH] = useState(0);
@@ -328,7 +328,7 @@ const Mamba: FC<MambaProps> = ({ docs, onUpsert, docID }) => {
                                     date: formatDate(date),
                                 });
                             }}><BiPlus /> Додати запис</Button>
-                            <Button size="xs" loading={isSubmitting} type="submit"><BiSave /> Зберегти</Button>
+                            <Button size="xs" disabled={!isValid} loading={isSubmitting} type="submit"><BiSave /> Зберегти</Button>
                             <Button size="xs" disabled><BiSolidFilePdf /> Експортувати</Button>
                         </HStack>
                     </Grid>

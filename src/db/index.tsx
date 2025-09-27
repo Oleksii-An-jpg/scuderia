@@ -7,15 +7,11 @@ import {
     setDoc,
     addDoc,
     WithFieldValue,
-    DocumentData,
-    QueryDocumentSnapshot,
-    SnapshotOptions,
     getDocs,
-    getDoc,
-    deleteDoc,
     query,
-    orderBy, Timestamp,
+    orderBy,
 } from "firebase/firestore";
+import {MambaAppModelType, MambaConverter, RoadListModel} from "@/models";
 
 const app = initializeApp({
     projectId: "cookbook-460911",
@@ -33,56 +29,13 @@ export type BaseItinerary = {
     fuel: number | null;
 };
 
-export type Itinerary<T extends BaseItinerary> = T;
-
-export type RoadList<T extends BaseItinerary = BaseItinerary> = {
-    itineraries: Itinerary<T>[];
-    id?: string;
-    start: Date;
-    end: Date;
-    vehicle: Vehicle;
-    fuel: number;
-    comment?: string;
-};
-
-export type RoadListFS<T extends BaseItinerary = BaseItinerary> = Omit<RoadList<T>, 'start' | 'end'> & {
-    start: Timestamp;
-    end: Timestamp;
-}
-
-export const formatDate = (date: Date) => {
-    return date.toISOString().split("T")[0];
-}
-
-const roadListConverter = {
-    toFirestore(roadList: RoadList): DocumentData {
-        const start = new Date(roadList.itineraries[0].date);
-        const end = new Date(roadList.itineraries[roadList.itineraries.length - 1].date);
-        return {
-            ...roadList,
-            start,
-            end,
-        };
-    },
-    fromFirestore(snapshot: QueryDocumentSnapshot<RoadListFS>, options: SnapshotOptions): RoadList {
-        const data = snapshot.data(options);
-
-        return {
-            ...data,
-            id: snapshot.id,
-            start: data.start.toDate(),
-            end: data.end.toDate(),
-        };
-    },
-};
-
 export const db = getFirestore(app);
-export const roadListsRef = collection(db, "road-lists").withConverter(roadListConverter);
+export const roadListsRef = collection(db, "road-lists").withConverter(new MambaConverter());
 
 export async function upsertDoc(
-    data: WithFieldValue<RoadList>,
+    data: WithFieldValue<MambaAppModelType>,
     id?: string
-): Promise<DocumentReference<RoadList>> {
+): Promise<DocumentReference<MambaAppModelType>> {
     if (id) {
         const docRef = doc(roadListsRef, id);
         await setDoc(docRef, data, { merge: true });
@@ -92,33 +45,8 @@ export async function upsertDoc(
     }
 }
 
-export async function deleteDocById(id: string) {
-    const docRef = doc(roadListsRef, id);
-    await deleteDoc(docRef);
-}
-
-export async function getDocById(id: string) {
-    const docRef = doc(roadListsRef, id);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
-    } else {
-        return { success: false, error: "No such document!" };
-    }
-}
-
-// Optimized query with proper sorting by latestDate
-export async function getAllRoadLists() {
-    try {
-        const q = query(roadListsRef, orderBy('end', 'desc'));
-        const querySnapshot = await getDocs(q);
-        return { success: true, data: querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data()
-            })) };
-    } catch (error) {
-        console.error("Error fetching road lists:", error);
-        return { success: false, error: error };
-    }
+export async function getAllRoadListsNext() {
+    const q = query(roadListsRef, orderBy('end', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return new RoadListModel(querySnapshot);
 }

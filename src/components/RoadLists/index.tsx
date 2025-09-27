@@ -1,74 +1,39 @@
 'use client';
-import {FC, useCallback, useEffect, useMemo, useState} from "react";
-import {BaseItinerary, getAllRoadLists, RoadList, Vehicle} from "@/db";
-import {Card, CardBody, Field, NativeSelect, VStack} from "@chakra-ui/react";
-import {useSearchParams} from "next/navigation";
+import {FC, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {getAllRoadListsNext, Vehicle} from "@/db";
+import {
+    Badge,
+    Button,
+    Card,
+    CloseButton,
+    Dialog,
+    Heading,
+    Portal,
+    Table, Text,
+    VStack
+} from "@chakra-ui/react";
 import {useForm} from "react-hook-form";
-import Mamba from "@/components/RoadLists/Edit/Mamba";
-import MambaList from "@/components/RoadLists/List/Mamba";
-
-export type MambaUsage = {
-    hh: number | null;
-    mh: number | null;
-    sh: number | null;
-    ph: number | null;
-    left?: number | null;
-    right?: number | null;
-}
-
-type KMARUsage = {
-    km_start: number | null;
-}
-
-export type MambaRoadList = RoadList<BaseItinerary & MambaUsage & {
-    total: string | null;
-}>;
-
-export type KMARRoadList = RoadList<BaseItinerary & KMARUsage & {
-    total: number | null;
-}>;
-
-export function isMambaRoadList(doc: RoadList): doc is MambaRoadList {
-    return doc.vehicle === Vehicle.MAMBA;
-}
-
-export function isKMARRoadList(doc: RoadList): doc is KMARRoadList {
-    return doc.vehicle === Vehicle.KMAR;
-}
+import {MambaRoadList, RoadListModel} from "@/models";
+import {useBoolean} from "react-use";
+import Mamba, {decimalToTimeString} from "@/components/RoadLists/Mamba";
 
 type Values = {
     vehicle: Vehicle
 }
 
 const RoadLists: FC = () => {
-    const params = useSearchParams();
-    const docID = params.get("id");
-    const [docs, setDocs] = useState<RoadList[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [model, setModel] = useState<RoadListModel>();
+    const [loading, setLoading] = useBoolean(false);
+    const [id, setID] = useState<string | null>(null);
+    const [open, setOpen] = useState(false);
     const sync = useCallback(async () => {
         setLoading(true);
-        const result = await getAllRoadLists();
-
-        if (result.success && result.data) {
-            setDocs(result.data)
-        }
-
+        const result = await getAllRoadListsNext();
+        setModel(result);
         setLoading(false);
     }, []);
 
-    const onUpsert = useCallback((data: RoadList, id?: string) => {
-        setDocs((prev) => {
-            const index = prev.findIndex(d => d.id === id);
-            if (index !== -1) {
-                const updated = [...prev];
-                updated[index] = { ...data, id: id! };
-                return updated;
-            } else {
-                return [{ ...data, id: id! }, ...prev];
-            }
-        });
-    }, []);
-    const { watch, register } = useForm<Values>({
+    const { watch } = useForm<Values>({
         defaultValues: {
             vehicle: Vehicle.MAMBA
         }
@@ -76,39 +41,146 @@ const RoadLists: FC = () => {
 
     const vehicle = watch("vehicle");
 
-    const data = useMemo(() => {
-        const mamba = docs.filter(isMambaRoadList);
-        const kmar = docs.filter(isKMARRoadList);
+    const byVehicle = model?.getByVehicle(vehicle);
+    const { record } = useMemo(() => {
+        const collection = model?.getByVehicle(vehicle);
+        let record: MambaRoadList | undefined
 
-        return {
-            mamba,
-            kmar,
+        if (id) {
+            record = collection?.byID.get(id);
+        } else if (model) {
+            const { total, startFuel } = model.getAccumulatedValues()
+            record = {
+                startFuel,
+                total,
+                start: new Date(),
+                end: new Date(),
+                vehicle: Vehicle.MAMBA,
+                itineraries: [{
+                    date: new Date(),
+                    br: null,
+                    fuel: null,
+                    sh: null,
+                    hh: null,
+                    mh: null,
+                    ph: null,
+                    total: null,
+                    comment: undefined,
+                }],
+                startHours: total,
+                currentHours: 0,
+                consumedFuel: 0,
+            } as MambaRoadList
         }
-    }, [docs]);
 
+        return { record };
+    }, [vehicle, id]);
     useEffect(() => {
         sync();
     }, []);
+    const ref = useRef<HTMLDivElement | null>(null);
     return <VStack alignItems="stretch">
-        {loading ? "Loading..." : <>
-            <Card.Root>
-                <Card.Header>
-                    <Field.Root>
-                        <Field.Label textStyle="sm" fontWeight="bold">Транспортний засіб</Field.Label>
-                        <NativeSelect.Root size="xs">
-                            <NativeSelect.Field {...register("vehicle")}>
-                                {[Vehicle.MAMBA, Vehicle.KMAR].map(v => <option key={v} value={v}>{v}</option>)}
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                        </NativeSelect.Root>
-                    </Field.Root>
-                </Card.Header>
-                <CardBody>
-                    {vehicle === Vehicle.MAMBA && <Mamba docs={data.mamba} docID={docID} onUpsert={onUpsert} />}
-                </CardBody>
-            </Card.Root>
-            {vehicle === Vehicle.MAMBA && <MambaList docs={data.mamba} docID={docID} />}
-        </>}
+        <Card.Root>
+            <Card.Header>
+                <Heading size="md">Дорожні листи</Heading>
+            </Card.Header>
+            <Card.Body>
+                {loading ? "Loading..." : <>
+                    <Table.Root>
+                        <Table.Header>
+                            <Table.Row>
+                                <Table.ColumnHeader>
+                                    <Heading size="sm">Період</Heading>
+                                </Table.ColumnHeader>
+                                <Table.ColumnHeader>
+                                    <Heading size="sm">Загальна тривалість</Heading>
+                                </Table.ColumnHeader>
+                                <Table.ColumnHeader colSpan={2}>
+                                    <Heading size="sm">Загальний розхід</Heading>
+                                </Table.ColumnHeader>
+                            </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                            {byVehicle?.ids.map(id => {
+                                const record = byVehicle.byID.get(id);
+                                if (!record) return null;
+                                return (
+                                    <Table.Row key={id}>
+                                        <Table.Cell>
+                                            <Badge colorPalette="blue" size="lg">
+                                                <Text fontWeight="bold">
+                                                    {new Intl.DateTimeFormat('uk-UA', {
+                                                        month: '2-digit',
+                                                        day: '2-digit',
+                                                        year: '2-digit'
+                                                    }).format(record.start)} — {new Intl.DateTimeFormat('uk-UA', {
+                                                    month: '2-digit',
+                                                    day: '2-digit',
+                                                    year: '2-digit'
+                                                }).format(record.end)}
+                                                </Text>
+                                            </Badge>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <Text fontWeight="bold">{decimalToTimeString(record.currentHours)}</Text>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <Text fontWeight="bold">{record.consumedFuel}</Text>
+                                        </Table.Cell>
+                                        <Table.Cell textAlign="right">
+                                            <Button size="xs" onClick={() => {
+                                                setID(id);
+                                                setOpen(true);
+                                            }}>
+                                                Переглянути
+                                            </Button>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                )
+                            })}
+                        </Table.Body>
+                    </Table.Root>
+                </>}
+            </Card.Body>
+            <Card.Footer>
+                <Button variant="outline" size="sm" onClick={() => {
+                    setOpen(true);
+                    setID(null);
+                }}>Додати лист</Button>
+            </Card.Footer>
+        </Card.Root>
+        <Dialog.Root size="cover" initialFocusEl={() => ref.current} lazyMount open={open} onOpenChange={(e) => setOpen(e.open)}>
+            <Portal>
+                <Dialog.Backdrop />
+                <Dialog.Positioner>
+                    <Dialog.Content ref={ref}>
+                        <Dialog.Header>
+                            <Dialog.Title>Дорожній лист від {new Intl.DateTimeFormat('uk-UA', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: '2-digit'
+                            }).format(record?.start)} по {new Intl.DateTimeFormat('uk-UA', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: '2-digit'
+                            }).format(record?.end)}</Dialog.Title>
+                        </Dialog.Header>
+                        <Dialog.Body>
+                            {record?.vehicle === Vehicle.MAMBA && <Mamba record={record} />}
+                        </Dialog.Body>
+                        <Dialog.Footer>
+                            <Dialog.ActionTrigger asChild>
+                                <Button variant="outline">Скасувати</Button>
+                            </Dialog.ActionTrigger>
+                            <Button form="upsert" type="submit">Зберегти</Button>
+                        </Dialog.Footer>
+                        <Dialog.CloseTrigger asChild>
+                            <CloseButton size="sm" />
+                        </Dialog.CloseTrigger>
+                    </Dialog.Content>
+                </Dialog.Positioner>
+            </Portal>
+        </Dialog.Root>
     </VStack>
 }
 

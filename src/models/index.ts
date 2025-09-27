@@ -98,7 +98,7 @@ export class RoadListModel {
     }
     private readonly kmar: {
         ids: string[];
-        byID: Map<any, any>;
+        byID: Map<string, MambaRoadList>;
     }
     constructor(snapshot: QuerySnapshot<MambaAppModelType, MambaDBModelType>) {
         const docs = snapshot.docs.map(doc => doc.data());

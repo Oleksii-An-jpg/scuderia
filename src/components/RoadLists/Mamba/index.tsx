@@ -273,6 +273,8 @@ const Record = memo<RecordProps>(({ index, remove }) => {
     );
 });
 
+Record.displayName = 'Record';
+
 // Optimized summary calculation component - using useWatch for better performance
 const SummaryRow = memo(() => {
     const { control } = useFormContext<MambaRoadList>();
@@ -319,6 +321,8 @@ const SummaryRow = memo(() => {
         </>
     );
 });
+
+SummaryRow.displayName = 'SummaryRow';
 
 const Mamba: FC<MambaProps> = ({ record }) => {
     const methods = useForm({

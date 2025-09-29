@@ -10,32 +10,38 @@ import {
     getDocs,
     query,
     orderBy,
+    CollectionReference,
 } from "firebase/firestore";
-import {MambaAppModelType, MambaConverter, RoadListModel} from "@/models";
+import {
+    Converter,
+    RoadListModel,
+    Vehicle,
+    MambaAppModelType,
+    KMARAppModelType,
+    MambaDBModelType,
+    KMARDBModelType
+} from "@/models";
 
 const app = initializeApp({
     projectId: "cookbook-460911",
     apiKey: "AIzaSyDjgyzE4AUL_ssOkL791sUBNNBnelljXpM",
 });
 
-export enum Vehicle {
-    KMAR = "Kmar",
-    MAMBA = "Mamba",
-}
-
-export type BaseItinerary = {
-    date: string;
-    br: number | null;
-    fuel: number | null;
-};
+export { Vehicle };
 
 export const db = getFirestore(app);
-export const roadListsRef = collection(db, "road-lists").withConverter(new MambaConverter());
+
+type AppModelType = MambaAppModelType | KMARAppModelType;
+type DBModelType = MambaDBModelType | KMARDBModelType;
+
+export const roadListsRef = collection(db, "road-lists").withConverter(
+    new Converter<AppModelType, DBModelType>()
+) as CollectionReference<AppModelType, DBModelType>;
 
 export async function upsertDoc(
-    data: WithFieldValue<MambaAppModelType>,
+    data: WithFieldValue<AppModelType>,
     id?: string
-): Promise<DocumentReference<MambaAppModelType>> {
+): Promise<DocumentReference<AppModelType, DBModelType>> {
     if (id) {
         const docRef = doc(roadListsRef, id);
         await setDoc(docRef, data, { merge: true });

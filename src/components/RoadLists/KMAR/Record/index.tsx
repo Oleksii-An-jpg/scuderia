@@ -63,17 +63,18 @@ const Record: FC<RecordProps> = ({ index, remove }) => {
     });
 
     const calculations = useRecordCalculations(currentItinerary, previousIt, startHours, startFuel, index);
+    const { total, consumed, remain, hours } = calculations
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setValue(`itineraries.${index}.total`, calculations.total, { shouldValidate: true });
-            setValue(`itineraries.${index}.consumed`, calculations.consumed, { shouldValidate: false });
-            setValue(`itineraries.${index}.remain`, calculations.remain, { shouldValidate: false });
-            setValue(`itineraries.${index}.hours`, calculations.hours, { shouldValidate: false });
+            setValue(`itineraries.${index}.total`, total, { shouldValidate: true });
+            setValue(`itineraries.${index}.consumed`, consumed, { shouldValidate: false });
+            setValue(`itineraries.${index}.remain`, remain, { shouldValidate: false });
+            setValue(`itineraries.${index}.hours`, hours, { shouldValidate: false });
         }, 50); // Small debounce to batch updates
 
         return () => clearTimeout(timer);
-    }, [calculations, setValue, index]);
+    }, [total, consumed, remain, hours, setValue, index]);
 
     const handleRemove = useCallback(() => remove(index), [remove, index]);
 

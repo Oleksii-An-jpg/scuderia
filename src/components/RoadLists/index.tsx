@@ -75,7 +75,7 @@ const RoadLists: FC = () => {
         }
 
         return { record };
-    }, [vehicle, id]);
+    }, [vehicle, id, model]);
     useEffect(() => {
         sync();
     }, []);

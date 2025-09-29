@@ -52,7 +52,7 @@ export async function upsertDoc(
 }
 
 export async function getAllRoadListsNext() {
-    const q = query(roadListsRef, orderBy('end', 'desc'));
+    const q = query(roadListsRef, orderBy('end', 'asc'));
     const querySnapshot = await getDocs(q);
     return new RoadListModel(querySnapshot);
 }

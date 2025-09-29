@@ -283,7 +283,7 @@ export class RoadListModel {
             const { fuel } = curr;
             acc += fuel || 0;
             return acc;
-        }, 0);
+        }, 0) + (record?.startFuel || 0);
     }
 
     private getTotalConsumedFuel(record: MambaAppModelType): number {
@@ -325,6 +325,7 @@ export class RoadListModel {
                 startFuel: 0
             };
         }
+
         return {
             total: lastRecord.total,
             startFuel: Math.round(((lastRecord.totalFuel || 0) - lastRecord.consumedFuel) * 100) / 100

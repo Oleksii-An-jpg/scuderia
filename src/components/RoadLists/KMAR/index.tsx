@@ -14,7 +14,7 @@ type KMARProps = {
 }
 
 export const calculateConsumed = (hh: number | null, mh: number | null, sh: number | null): number => {
-    return Math.round(((hh || 0) * 5.5 + (mh || 0) * 54.7 + (sh || 0) * 199) * 100) / 100;
+    return Math.ceil(Math.round(((hh || 0) * 5.5 + (mh || 0) * 54.7 + (sh || 0) * 199) * 100) / 100);
 };
 
 export const calculateHours = (hh: number | null, mh: number | null, sh: number | null): number => {

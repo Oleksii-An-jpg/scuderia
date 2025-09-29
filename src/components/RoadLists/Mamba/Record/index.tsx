@@ -73,7 +73,7 @@ const Record: FC<RecordProps> = ({ index, remove }) => {
         }, 50); // Small debounce to batch updates
 
         return () => clearTimeout(timer);
-    }, [calculations, setValue, index]);
+    }, [calculations.total, calculations.consumed, calculations.remain, calculations.hours, setValue, index]);
 
     const handleRemove = useCallback(() => remove(index), [remove, index]);
 

@@ -51,7 +51,7 @@ const Records: FC<RecordsProps> = ({ byVehicle, onOpen }) => {
                             <Text fontWeight="bold">{decimalToTimeString(record.currentHours)}</Text>
                         </Table.Cell>
                         <Table.Cell>
-                            <Text fontWeight="bold">{record.consumedFuel}</Text>
+                            <Text fontWeight="bold">{Math.round(record.consumedFuel * 1000) / 1000}</Text>
                         </Table.Cell>
                         <Table.Cell textAlign="right">
                             <Button size="xs" onClick={() => {

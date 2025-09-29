@@ -100,28 +100,23 @@ export type KMARAppModelType = BaseAppModelType<KMARItinerary> & {
     totalFuel?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class Converter<T extends BaseAppModelType<any>, K extends BaseDBModelType> implements FirestoreDataConverter<T, K> {
     toFirestore(model: WithFieldValue<T>): WithFieldValue<K>;
     toFirestore(model: PartialWithFieldValue<T>): PartialWithFieldValue<K>;
     toFirestore(model: WithFieldValue<T> | PartialWithFieldValue<T>): WithFieldValue<K> | PartialWithFieldValue<K> {
-        const { start, end, itineraries, id, ...rest } = model as any;
+        const { start, end, itineraries, id, ...rest } = model as T;
 
-        const result: any = { ...rest };
-
-        if (start instanceof Date) {
-            result.start = Timestamp.fromDate(start);
-        } else if (start) {
-            result.start = start;
-        }
-
-        if (end instanceof Date) {
-            result.end = Timestamp.fromDate(end);
-        } else if (end) {
-            result.end = end;
-        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result: any = {
+            ...rest,
+            start: Timestamp.fromDate(start),
+            end: Timestamp.fromDate(end),
+        };
 
         if (itineraries) {
-            result.itineraries = itineraries.map(({ date, ...itRest }: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            result.itineraries = itineraries.map(({ date, leftHours, rightHours, remain, consumed, ...itRest }: any) => {
                 if (date instanceof Date) {
                     return {
                         ...itRest,
@@ -135,6 +130,7 @@ export class Converter<T extends BaseAppModelType<any>, K extends BaseDBModelTyp
             });
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return result as any;
     }
 

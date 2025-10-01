@@ -1,41 +1,75 @@
-import {FC, memo, useCallback, useEffect} from "react";
-import {KMARRoadList} from "@/models";
-import {FormProvider, useFieldArray, useForm} from "react-hook-form";
-import {upsertDoc} from "@/db";
+'use client';
+import {FC, memo, useCallback, useEffect, useState} from "react";
+import {KMARRoadListAppModel, KMARRoadListUIModel} from "@/models/mamba";
+import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
+import {calculateCumulative} from "@/calculator";
 import {Button, Field, Grid, GridItem, Heading, HStack, Input, Separator, Text, VStack} from "@chakra-ui/react";
 import TimeInput from "@/components/TimeInput";
-import Record from "@/components/RoadLists/KMAR/Record";
-import SummaryRow from "@/components/RoadLists/Mamba/SummaryRow";
+import Summary from "@/components/RoadLists/KMARNext/Summary";
 import {BiPlus} from "react-icons/bi";
+import Record from "@/components/RoadLists/KMARNext/Record";
+import {upsertDoc} from "@/db";
 
-type KMARProps = {
-    record: KMARRoadList;
-    onSubmit: () => Promise<void>;
+type KMARNextProps = {
+    model: KMARRoadListAppModel
+    onBeforeSubmit: () => void;
+    onAfterSubmit: () => void;
 }
 
-export const calculateConsumed = (hh: number | null, mh: number | null, sh: number | null): number => {
-    return Math.ceil(Math.round(((hh || 0) * 5.5 + (mh || 0) * 54.7 + (sh || 0) * 199) * 100) / 100);
-};
-
-export const calculateHours = (hh: number | null, mh: number | null, sh: number | null): number => {
-    return (hh || 0) + (mh || 0) + (sh || 0);
-};
-
-const KMAR: FC<KMARProps> = ({ record, onSubmit }) => {
-    const methods = useForm<KMARRoadList>({
-        defaultValues: record,
-        mode: 'onChange',
+const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) => {
+    const methods = useForm<KMARRoadListAppModel>({
+        defaultValues: model,
     });
-
     const { control, reset, register, handleSubmit } = methods;
     const { fields, append, remove } = useFieldArray({
         control,
         name: "itineraries"
     });
 
+    const [itineraries, startHours, startFuel] = useWatch({
+        control,
+        name: ["itineraries", "startHours", "startFuel"],
+    });
+
+    const [cumulative, setCumulative] = useState<KMARRoadListUIModel>(() => {
+        return calculateCumulative({
+            ...model,
+            itineraries, startHours, startFuel
+        }) as KMARRoadListUIModel;
+    })
+
     useEffect(() => {
-        reset(record);
-    }, [record]);
+        const timer = setTimeout(() => {
+            const uiModel = calculateCumulative({
+                ...model,
+                itineraries, startHours, startFuel,
+            }) as KMARRoadListUIModel;
+            setCumulative(uiModel)
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [itineraries, startHours, startFuel]);
+
+    useEffect(() => {
+        reset(model);
+    }, [model, reset]);
+
+    const handleFormSubmit = useCallback(async (data: KMARRoadListAppModel) => {
+        onBeforeSubmit();
+
+        const dates = data.itineraries.map(item => item.date.getTime());
+
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+
+        await upsertDoc({
+            ...data,
+            start: minDate,
+            end: maxDate
+        }, model.id);
+
+        onAfterSubmit();
+    }, []);
 
     const handleAppend = useCallback(() => {
         append({
@@ -45,15 +79,8 @@ const KMAR: FC<KMARProps> = ({ record, onSubmit }) => {
             hh: null,
             mh: null,
             sh: null,
-            total: null,
         });
     }, [append]);
-
-    const handleFormSubmit = useCallback(async (data: KMARRoadList) => {
-        const { currentHours, consumedFuel, ...rest } = data;
-        await upsertDoc(rest, record.id);
-        await onSubmit();
-    }, [record.id]);
 
     return <FormProvider {...methods}>
         <form id="upsert" onSubmit={handleSubmit(handleFormSubmit)}>
@@ -100,11 +127,13 @@ const KMAR: FC<KMARProps> = ({ record, onSubmit }) => {
                         <GridItem><Heading size="sm">Коментар</Heading></GridItem>
                     </Grid>
 
-                    {fields.map((field, index) => (
-                        <Record key={field.id} index={index} remove={remove} />
-                    ))}
+                    {fields.map((field, index) => {
+                        return (
+                            <Record key={field.id} index={index} onRemove={() => remove(index)} {...cumulative.itineraries[index]} />
+                        )
+                    })}
 
-                    <SummaryRow />
+                    <Summary {...cumulative} />
                 </Grid>
 
                 <HStack>
@@ -117,4 +146,4 @@ const KMAR: FC<KMARProps> = ({ record, onSubmit }) => {
     </FormProvider>
 }
 
-export default memo<KMARProps>(KMAR);
+export default memo<KMARNextProps>(KMARNext)

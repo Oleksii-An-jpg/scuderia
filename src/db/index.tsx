@@ -1,47 +1,35 @@
 import { initializeApp } from "firebase/app";
 import {
     collection,
-    DocumentReference,
     getFirestore,
+    getDocs,
+    query,
     doc,
     setDoc,
     addDoc,
-    WithFieldValue,
-    getDocs,
-    query,
-    orderBy,
-    CollectionReference,
+    orderBy, WithFieldValue, DocumentReference,
 } from "firebase/firestore";
 import {
     Converter,
-    RoadListModel,
-    Vehicle,
-    MambaAppModelType,
-    KMARAppModelType,
-    MambaDBModelType,
-    KMARDBModelType
-} from "@/models";
+    Vehicle, MambaRoadListAppModel, KMARRoadListAppModel
+} from "@/models/mamba";
+import {QuerySnapshot} from "@firebase/firestore";
 
 const app = initializeApp({
     projectId: "cookbook-460911",
     apiKey: "AIzaSyDjgyzE4AUL_ssOkL791sUBNNBnelljXpM",
 });
 
-export { Vehicle };
-
 export const db = getFirestore(app);
 
-type AppModelType = MambaAppModelType | KMARAppModelType;
-type DBModelType = MambaDBModelType | KMARDBModelType;
-
 export const roadListsRef = collection(db, "road-lists").withConverter(
-    new Converter<AppModelType, DBModelType>()
-) as CollectionReference<AppModelType, DBModelType>;
+    new Converter()
+);
 
 export async function upsertDoc(
-    data: WithFieldValue<AppModelType>,
+    data: WithFieldValue<MambaRoadListAppModel | KMARRoadListAppModel>,
     id?: string
-): Promise<DocumentReference<AppModelType, DBModelType>> {
+): Promise<DocumentReference<MambaRoadListAppModel | KMARRoadListAppModel>> {
     if (id) {
         const docRef = doc(roadListsRef, id);
         await setDoc(docRef, data, { merge: true });
@@ -51,8 +39,28 @@ export async function upsertDoc(
     }
 }
 
+export class RoadListStore {
+    private records: Map<string, MambaRoadListAppModel | KMARRoadListAppModel>;
+
+    constructor(snapshot: QuerySnapshot<MambaRoadListAppModel | KMARRoadListAppModel>) {
+        this.records = new Map(
+            snapshot.docs.map(doc => [doc.id, doc.data()])
+        );
+    }
+
+    getByVehicle(vehicle: Vehicle) {
+        return Array.from(this.records.values())
+            .filter(r => r.vehicle === vehicle)
+            .sort((a, b) => a.end.getTime() - b.end.getTime());
+    }
+
+    getById(id: string) {
+        return this.records.get(id);
+    }
+}
+
 export async function getAllRoadListsNext() {
     const q = query(roadListsRef, orderBy('end', 'asc'));
     const querySnapshot = await getDocs(q);
-    return new RoadListModel(querySnapshot);
+    return new RoadListStore(querySnapshot);
 }

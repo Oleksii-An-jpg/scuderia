@@ -1,37 +1,29 @@
 'use client';
 import {FC, useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {getAllRoadListsNext, Vehicle} from "@/db";
-import {
-    Button,
-    Card,
-    CloseButton,
-    Dialog,
-    Heading,
-    Portal,
-    Tabs,
-    VStack
-} from "@chakra-ui/react";
+import {getAllRoadListsNext, RoadListStore} from "@/db";
+import {Card, VStack, Tabs, Dialog, Portal, Button, CloseButton} from "@chakra-ui/react";
+import {useBoolean} from "usehooks-ts";
+import {KMARRoadListAppModel, MambaRoadListAppModel, Vehicle} from "@/models/mamba";
 import {Controller, useForm} from "react-hook-form";
-import {KMARRoadList, MambaRoadList, RoadListModel} from "@/models";
-import {useBoolean} from "react-use";
-import Mamba from "@/components/RoadLists/Mamba";
-import KMAR from "@/components/RoadLists/KMAR";
+import {calculateCumulative} from "@/calculator";
 import Records from "@/components/RoadLists/Records";
+import MambaNext from "@/components/RoadLists/MambaNext";
+import KMARNext from "@/components/RoadLists/KMARNext";
 
 type Values = {
     vehicle: Vehicle
 }
 
 const RoadLists: FC = () => {
-    const [model, setModel] = useState<RoadListModel>();
-    const [loading, setLoading] = useBoolean(false);
+    const [store, setStore] = useState<RoadListStore>();
+    const { value: loading, setValue: setLoading, toggle } = useBoolean(false);
     const [id, setID] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
     const sync = useCallback(async () => {
-        setLoading(true);
+        toggle()
         const result = await getAllRoadListsNext();
-        setModel(result);
-        setLoading(false);
+        setStore(result);
+        toggle();
     }, []);
 
     const { watch, control } = useForm<Values>({
@@ -42,49 +34,59 @@ const RoadLists: FC = () => {
 
     const vehicle = watch("vehicle");
 
-    const byVehicle = model?.getByVehicle(vehicle);
-    const { record } = useMemo(() => {
-        const collection = model?.getByVehicle(vehicle);
-        let record: MambaRoadList | KMARRoadList | undefined
-
+    const byVehicle = store?.getByVehicle(vehicle).map(calculateCumulative).filter(m => m != null);
+    const model: MambaRoadListAppModel | KMARRoadListAppModel | undefined = useMemo(() => {
         if (id) {
-            record = collection?.byID.get(id);
-        } else if (model) {
-            const { total, startFuel } = model.getAccumulatedValues(vehicle);
-            record = {
-                startFuel,
-                total,
+            return store?.getById(id);
+        } else if (byVehicle) {
+            const last = byVehicle[byVehicle.length - 1];
+            const model = {
+                startFuel: last.cumulativeFuel,
+                startHours: last.cumulativeHours,
                 start: new Date(),
                 end: new Date(),
-                vehicle,
-                itineraries: [{
-                    date: new Date(),
-                    br: null,
-                    fuel: null,
-                    sh: null,
-                    hh: null,
-                    mh: null,
-                    ph: null,
-                    total: null,
-                    comment: undefined,
-                }],
-                startHours: total,
-                currentHours: 0,
-                consumedFuel: 0,
-            } as MambaRoadList
+            }
+            if (vehicle === Vehicle.MAMBA) {
+                return {
+                    ...model,
+                    vehicle: Vehicle.MAMBA,
+                    itineraries: [{
+                        date: new Date(),
+                        br: null,
+                        fuel: null,
+                        sh: null,
+                        hh: null,
+                        mh: null,
+                        ph: null,
+                        total: null,
+                        comment: undefined,
+                    }],
+                } as unknown as MambaRoadListAppModel
+            } else {
+                return {
+                    ...model,
+                    vehicle,
+                    itineraries: [{
+                        date: new Date(),
+                        br: null,
+                        fuel: null,
+                        sh: null,
+                        hh: null,
+                        mh: null,
+                        total: null,
+                        comment: undefined,
+                    }],
+                } as unknown as KMARRoadListAppModel
+            }
         }
-
-        return { record };
-    }, [vehicle, id, model]);
+    }, [id, vehicle, byVehicle]);
     useEffect(() => {
         sync();
     }, []);
     const ref = useRef<HTMLDivElement | null>(null);
     return <VStack alignItems="stretch">
         <Card.Root>
-            <Card.Header>
-                <Heading size="md">Дорожні листи</Heading>
-            </Card.Header>
+            <Card.Header>Дорожні листи</Card.Header>
             <Card.Body>
                 <Controller control={control} render={({ field: { value, onChange } }) => <Tabs.Root value={value} onValueChange={(e) => onChange(e.value)}>
                     <Tabs.List>
@@ -97,13 +99,13 @@ const RoadLists: FC = () => {
                     </Tabs.List>
                     {loading ? "Loading..." : <>
                         <Tabs.Content value={Vehicle.MAMBA}>
-                            <Records byVehicle={byVehicle} onOpen={(id: string) => {
+                            <Records models={byVehicle} onOpen={(id) => {
                                 setID(id);
                                 setOpen(true);
                             }} />
                         </Tabs.Content>
                         <Tabs.Content value={Vehicle.KMAR}>
-                            <Records byVehicle={byVehicle} onOpen={(id: string) => {
+                            <Records models={byVehicle} onOpen={(id: string) => {
                                 setID(id);
                                 setOpen(true);
                             }} />
@@ -128,15 +130,27 @@ const RoadLists: FC = () => {
                                 month: '2-digit',
                                 day: '2-digit',
                                 year: '2-digit'
-                            }).format(record?.start)} по {new Intl.DateTimeFormat('uk-UA', {
+                            }).format(model?.start)} по {new Intl.DateTimeFormat('uk-UA', {
                                 month: '2-digit',
                                 day: '2-digit',
                                 year: '2-digit'
-                            }).format(record?.end)}</Dialog.Title>
+                            }).format(model?.end)}</Dialog.Title>
                         </Dialog.Header>
                         <Dialog.Body>
-                            {record?.vehicle === Vehicle.MAMBA && <Mamba onSubmit={sync} record={record} />}
-                            {record?.vehicle === Vehicle.KMAR && <KMAR onSubmit={sync} record={record} />}
+                            {model?.vehicle === Vehicle.MAMBA && <MambaNext onBeforeSubmit={() => {
+                                setLoading(true);
+                            }} onAfterSubmit={async () => {
+                                await sync();
+                                setLoading(false);
+                                setOpen(false);
+                            }} model={model} />}
+                            {model?.vehicle === Vehicle.KMAR && <KMARNext onBeforeSubmit={() => {
+                                setLoading(true);
+                            }} onAfterSubmit={async () => {
+                                await sync();
+                                setLoading(false);
+                                setOpen(false);
+                            }} model={model} />}
                         </Dialog.Body>
                         <Dialog.Footer>
                             <Dialog.ActionTrigger asChild>

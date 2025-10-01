@@ -34,7 +34,7 @@ const RoadLists: FC = () => {
 
     const vehicle = watch("vehicle");
 
-    const byVehicle = store?.getByVehicle(vehicle).map(calculateCumulative).filter(m => m != null);
+    const byVehicle = useMemo(() => store?.getByVehicle(vehicle).map(calculateCumulative).filter(m => m != null), [store, vehicle]);
     const model: MambaRoadListAppModel | KMARRoadListAppModel | undefined = useMemo(() => {
         if (id) {
             return store?.getById(id);

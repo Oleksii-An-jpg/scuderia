@@ -26,7 +26,7 @@ const Record: FC<RecordProps> = ({ index, rowHours, onRemove, rowConsumed, cumul
                     control={control}
                     render={({ field }) => (
                         <DatePicker
-                            locale="uk"
+                            locale="uk-UA"
                             popperPlacement="top-end"
                             dateFormat="dd/MM/yyyy"
                             selected={field.value}

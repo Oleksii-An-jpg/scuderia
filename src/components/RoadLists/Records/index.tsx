@@ -19,8 +19,11 @@ const Records: FC<RecordsProps> = ({ models, onOpen }) => {
                 <Table.ColumnHeader>
                     <Heading size="sm">Загальна тривалість</Heading>
                 </Table.ColumnHeader>
-                <Table.ColumnHeader colSpan={2}>
+                <Table.ColumnHeader>
                     <Heading size="sm">Загальний розхід</Heading>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader colSpan={2}>
+                    <Heading size="sm">Залишок на кінець зміни</Heading>
                 </Table.ColumnHeader>
             </Table.Row>
         </Table.Header>
@@ -48,6 +51,9 @@ const Records: FC<RecordsProps> = ({ models, onOpen }) => {
                         </Table.Cell>
                         <Table.Cell>
                             <Text fontWeight="bold">{model.fuel}</Text>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Text fontWeight="bold">{model.cumulativeFuel}</Text>
                         </Table.Cell>
                         <Table.Cell textAlign="right">
                             <Button size="xs" onClick={() => {

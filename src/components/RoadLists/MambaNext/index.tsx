@@ -4,7 +4,7 @@ import {MambaRoadListAppModel, MambaRoadListUIModel} from "@/models/mamba";
 import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
 import {Button, Field, Grid, GridItem, Heading, HStack, Input, Separator, Text, VStack} from "@chakra-ui/react";
-import TimeInput from "@/components/TimeInput";
+import TimeInput, {decimalToTimeString} from "@/components/TimeInput";
 import Summary from "@/components/RoadLists/MambaNext/Summary";
 import {BiPlus} from "react-icons/bi";
 import Record from "@/components/RoadLists/MambaNext/Record";
@@ -100,7 +100,7 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
                         </Field.Root>
                         <Field.Root w="auto">
                             <Field.Label>Напрацювання (год)</Field.Label>
-                            <TimeInput {...register("startHours")} control={control} />
+                            <Input size="xs" disabled value={decimalToTimeString(startHours)} />
                         </Field.Root>
                     </HStack>
                 </VStack>

@@ -4,7 +4,7 @@ import {MambaRoadListAppModel, MambaRoadListUIModel} from "@/models/mamba";
 import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
 import {Button, Field, Grid, GridItem, Heading, HStack, Input, Separator, Text, VStack} from "@chakra-ui/react";
-import TimeInput, {decimalToTimeString} from "@/components/TimeInput";
+import {decimalToTimeString} from "@/components/TimeInput";
 import Summary from "@/components/RoadLists/MambaNext/Summary";
 import {BiPlus} from "react-icons/bi";
 import Record from "@/components/RoadLists/MambaNext/Record";

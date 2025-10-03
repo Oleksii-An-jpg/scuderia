@@ -71,8 +71,14 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
     }, []);
 
     const handleAppend = useCallback(() => {
+        let date = itineraries.length && itineraries[itineraries.length - 1].date;
+        if (date) {
+            date.setDate(date.getDate() + 1);
+        } else {
+            date = new Date();
+        }
         append({
-            date: new Date(),
+            date,
             br: null,
             fuel: null,
             hh: null,
@@ -80,7 +86,7 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
             sh: null,
             ph: null,
         });
-    }, [append]);
+    }, [append, itineraries]);
 
     return <FormProvider {...methods}>
         <form id="upsert" onSubmit={handleSubmit(handleFormSubmit)}>
@@ -130,7 +136,7 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
 
                     {fields.map((field, index) => {
                         return (
-                            <Record key={field.id} onRemove={() => remove(index)} index={index} {...cumulative.itineraries[index]} />
+                            <Record last={index === fields.length - 1} key={field.id} onRemove={() => remove(index)} index={index} {...cumulative.itineraries[index]} />
                         )
                     })}
 

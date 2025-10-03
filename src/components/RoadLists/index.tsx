@@ -41,8 +41,8 @@ const RoadLists: FC = () => {
         } else if (byVehicle) {
             const last = byVehicle[byVehicle.length - 1];
             const model = {
-                startFuel: last.cumulativeFuel,
-                startHours: last.cumulativeHours,
+                startFuel: last?.cumulativeFuel,
+                startHours: last?.cumulativeHours,
                 start: new Date(),
                 end: new Date(),
             }
@@ -120,11 +120,11 @@ const RoadLists: FC = () => {
                 }}>Додати лист</Button>
             </Card.Footer>
         </Card.Root>
-        <Dialog.Root size="cover" initialFocusEl={() => ref.current} lazyMount open={open} onOpenChange={(e) => setOpen(e.open)}>
+        <Dialog.Root scrollBehavior="inside" size="cover" initialFocusEl={() => ref.current} lazyMount open={open} onOpenChange={(e) => setOpen(e.open)}>
             <Portal>
                 <Dialog.Backdrop />
                 <Dialog.Positioner>
-                    <Dialog.Content ref={ref}>
+                    <Dialog.Content ref={ref} maxH="100%">
                         <Dialog.Header>
                             <Dialog.Title>Дорожній лист від {new Intl.DateTimeFormat('uk-UA', {
                                 month: '2-digit',
@@ -136,7 +136,7 @@ const RoadLists: FC = () => {
                                 year: '2-digit'
                             }).format(model?.end)}</Dialog.Title>
                         </Dialog.Header>
-                        <Dialog.Body>
+                        <Dialog.Body height={100}>
                             {model?.vehicle === Vehicle.MAMBA && <MambaNext onBeforeSubmit={() => {
                                 setLoading(true);
                             }} onAfterSubmit={async () => {

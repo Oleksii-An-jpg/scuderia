@@ -28,8 +28,8 @@ const RATES = {
 export function calculateCumulative(
     roadList: MambaRoadListAppModel | KMARRoadListAppModel
 ) {
-    let cumulativeHours = roadList.startHours;
-    let cumulativeFuel = roadList.startFuel;
+    let cumulativeHours = (roadList.startHours || 0);
+    let cumulativeFuel = (roadList.startFuel || 0);
 
     if (isMambaRoadList(roadList)) {
         const enhancedItineraries = roadList.itineraries.map(it => {

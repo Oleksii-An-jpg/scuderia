@@ -13,9 +13,10 @@ type RecordProps = {
     cumulativeHours: number
     cumulativeFuel: number
     onRemove: () => void
+    last: boolean;
 }
 
-const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumulativeHours, cumulativeFuel }) => {
+const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumulativeHours, cumulativeFuel, last }) => {
     const { control, register } = useFormContext<MambaRoadListAppModel>();
 
     return <Grid templateColumns="subgrid" gridColumn="span 13">
@@ -54,7 +55,6 @@ const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumul
                 <Input
                     autoComplete="off"
                     type="number"
-                    min={0}
                     step={1}
                     size="2xs"
                     {...register(`itineraries.${index}.fuel`, { valueAsNumber: true })}
@@ -95,7 +95,9 @@ const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumul
             <Text textStyle="sm">{rowConsumed}</Text>
         </GridItem>
         <GridItem alignSelf="center">
-            <Text textStyle="sm">{cumulativeFuel}</Text>
+            <Text textStyle="sm" {...(last && {
+                fontWeight: "bold",
+            })}>{cumulativeFuel}</Text>
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">

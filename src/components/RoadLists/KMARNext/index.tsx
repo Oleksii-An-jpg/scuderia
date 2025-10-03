@@ -100,7 +100,7 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
                         </Field.Root>
                         <Field.Root w="auto">
                             <Field.Label>Напрацювання (год)</Field.Label>
-                            <Input size="xs" disabled value={decimalToTimeString(startHours)} />
+                            <Input size="xs" value={decimalToTimeString(startHours)} />
                         </Field.Root>
                     </HStack>
                 </VStack>

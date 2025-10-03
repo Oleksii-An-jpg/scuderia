@@ -97,20 +97,18 @@ const RoadLists: FC = () => {
                             KMAR
                         </Tabs.Trigger>
                     </Tabs.List>
-                    {loading ? "Loading..." : <>
-                        <Tabs.Content value={Vehicle.MAMBA}>
-                            <Records models={byVehicle} onOpen={(id) => {
-                                setID(id);
-                                setOpen(true);
-                            }} />
-                        </Tabs.Content>
-                        <Tabs.Content value={Vehicle.KMAR}>
-                            <Records models={byVehicle} onOpen={(id: string) => {
-                                setID(id);
-                                setOpen(true);
-                            }} />
-                        </Tabs.Content>
-                    </>}
+                    <Tabs.Content value={Vehicle.MAMBA}>
+                        <Records loading={loading} models={byVehicle} onOpen={(id) => {
+                            setID(id);
+                            setOpen(true);
+                        }} />
+                    </Tabs.Content>
+                    <Tabs.Content value={Vehicle.KMAR}>
+                        <Records loading={loading} models={byVehicle} onOpen={(id: string) => {
+                            setID(id);
+                            setOpen(true);
+                        }} />
+                    </Tabs.Content>
                 </Tabs.Root>} name="vehicle" />
             </Card.Body>
             <Card.Footer>

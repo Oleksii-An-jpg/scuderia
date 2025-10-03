@@ -1,15 +1,17 @@
 import {FC, memo} from "react";
-import {Badge, Button, Heading, Table, Text} from "@chakra-ui/react";
+import {Badge, Button, EmptyState, Heading, Skeleton, Table, Text, VStack} from "@chakra-ui/react";
 import {decimalToTimeString} from "@/components/TimeInput";
 import {KMARRoadListUIModel, MambaRoadListUIModel} from "@/models/mamba";
 import "react-datepicker/dist/react-datepicker.css";
+import {BiBowlHot} from "react-icons/bi";
 
 type RecordsProps = {
+    loading: boolean;
     models?: (MambaRoadListUIModel | KMARRoadListUIModel)[];
     onOpen: (id: string) => void;
 }
 
-const Records: FC<RecordsProps> = ({ models, onOpen }) => {
+const Records: FC<RecordsProps> = ({ models, onOpen, loading }) => {
     return <Table.Root>
         <Table.Header>
             <Table.Row>
@@ -28,7 +30,41 @@ const Records: FC<RecordsProps> = ({ models, onOpen }) => {
             </Table.Row>
         </Table.Header>
         <Table.Body>
-            {models?.map((model, index) => {
+            {loading || !models ? Array.from({ length: 10 }).map((_, index) => (
+                <Table.Row key={index}>
+                    <Table.Cell>
+                        <Skeleton height="20px" />
+                    </Table.Cell>
+                    <Table.Cell>
+                        <Skeleton height="20px" />
+                    </Table.Cell>
+                    <Table.Cell>
+                        <Skeleton height="20px" />
+                    </Table.Cell>
+                    <Table.Cell>
+                        <Skeleton height="20px" />
+                    </Table.Cell>
+                    <Table.Cell textAlign="right">
+                        <Skeleton height="20px" />
+                    </Table.Cell>
+                </Table.Row>
+            )) : models.length === 0 ? <Table.Row>
+                <Table.Cell colSpan={5}>
+                    <EmptyState.Root >
+                        <EmptyState.Content>
+                            <EmptyState.Indicator>
+                                <BiBowlHot />
+                            </EmptyState.Indicator>
+                            <VStack textAlign="center">
+                                <EmptyState.Title>Дорожні листи відсутні</EmptyState.Title>
+                                <EmptyState.Description>
+                                    Додавайте дорожні листи, щоб вони відображалися тут.
+                                </EmptyState.Description>
+                            </VStack>
+                        </EmptyState.Content>
+                    </EmptyState.Root>
+                </Table.Cell>
+            </Table.Row> : models.map((model, index) => {
                 return (
                     <Table.Row key={index}>
                         <Table.Cell>

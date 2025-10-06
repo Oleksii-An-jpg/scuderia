@@ -1,5 +1,5 @@
 'use client';
-import {FC, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {FC, useCallback, useEffect, useMemo, useRef, useState, memo} from "react";
 import {getAllRoadListsNext, RoadListStore} from "@/db";
 import {Card, VStack, Tabs, Dialog, Portal, Button, CloseButton} from "@chakra-ui/react";
 import {useBoolean} from "usehooks-ts";
@@ -166,4 +166,4 @@ const RoadLists: FC = () => {
     </VStack>
 }
 
-export default RoadLists;
+export default memo(RoadLists);

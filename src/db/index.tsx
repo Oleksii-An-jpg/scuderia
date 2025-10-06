@@ -5,8 +5,8 @@ import {
     getDocs,
     query,
     doc,
-    setDoc,
     addDoc,
+    writeBatch,
     orderBy, WithFieldValue, DocumentReference,
 } from "firebase/firestore";
 import {
@@ -14,6 +14,7 @@ import {
     Vehicle, MambaRoadListAppModel, KMARRoadListAppModel
 } from "@/models/mamba";
 import {QuerySnapshot} from "@firebase/firestore";
+import {calculateCumulative} from "@/calculator";
 
 const app = initializeApp({
     projectId: "cookbook-460911",
@@ -32,7 +33,65 @@ export async function upsertDoc(
 ): Promise<DocumentReference<MambaRoadListAppModel | KMARRoadListAppModel>> {
     if (id) {
         const docRef = doc(roadListsRef, id);
-        await setDoc(docRef, data, { merge: true });
+        const store = await getAllRoadListsNext();
+        const vehicle = data.vehicle as Vehicle;
+        const roadLists = store.getByVehicle(vehicle);
+
+        // Find and update the modified record
+        const updatedIndex = roadLists.findIndex(rl => rl.id === id);
+        roadLists[updatedIndex] = {
+            ...roadLists[updatedIndex],
+            ...data,
+            id,
+            vehicle
+        } as (MambaRoadListAppModel | KMARRoadListAppModel);
+
+        const batch = writeBatch(db);
+
+        // Start with the values from the previous record (before the updated one)
+        let prevCumulativeHours: number;
+        let prevCumulativeFuel: number;
+
+        if (updatedIndex > 0) {
+            // Calculate the previous record to get its ending values
+            const prevRoadList = roadLists[updatedIndex - 1];
+            const prevCalculated = calculateCumulative(prevRoadList);
+            prevCumulativeHours = prevCalculated.cumulativeHours;
+            prevCumulativeFuel = prevCalculated.cumulativeFuel;
+        } else {
+            // First record uses its own start values
+            prevCumulativeHours = roadLists[0].startHours;
+            prevCumulativeFuel = roadLists[0].startFuel;
+        }
+
+        // Recalculate from the updated record onwards
+        for (let i = updatedIndex; i < roadLists.length; i++) {
+            const currentRoadList = roadLists[i];
+
+            // Use the accumulated values from the previous iteration
+            const recalculated = calculateCumulative({
+                ...currentRoadList,
+                startHours: prevCumulativeHours,
+                startFuel: prevCumulativeFuel,
+            });
+
+            // Store only the input values
+            const docRef = doc(roadListsRef, currentRoadList.id);
+            batch.set(docRef, {
+                ...currentRoadList,
+                startHours: prevCumulativeHours,
+                startFuel: prevCumulativeFuel,
+            }, { merge: true });
+
+            // Update for next iteration
+            prevCumulativeHours = recalculated.cumulativeHours;
+            prevCumulativeFuel = recalculated.cumulativeFuel;
+
+            // Update in-memory array
+            roadLists[i] = recalculated;
+        }
+
+        await batch.commit();
         return docRef;
     } else {
         return addDoc(roadListsRef, data);

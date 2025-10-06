@@ -26,7 +26,6 @@ const Record: FC<RecordProps> = ({ index, rowHours, onRemove, rowConsumed, cumul
                     control={control}
                     render={({ field }) => (
                         <DatePicker
-                            locale="uk-UA"
                             popperPlacement="top-end"
                             dateFormat="dd/MM/yyyy"
                             selected={field.value}
@@ -94,12 +93,12 @@ const Record: FC<RecordProps> = ({ index, rowHours, onRemove, rowConsumed, cumul
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">
-                <Text fontWeight="bold">{decimalToTimeString(cumulativeHours)}</Text>
+                <Text fontWeight="bold">{Math.round(cumulativeHours * 100) / 100}</Text>
             </Badge>
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">
-                <Text fontWeight="bold">{decimalToTimeString(cumulativeHours)}</Text>
+                <Text fontWeight="bold">{Math.round(cumulativeHours * 100) / 100}</Text>
             </Badge>
         </GridItem>
         <GridItem>

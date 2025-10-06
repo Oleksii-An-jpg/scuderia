@@ -1,5 +1,5 @@
 'use client';
-import {FC, memo, useCallback, useEffect, useState} from "react";
+import {forwardRef, memo, useCallback, useEffect, useImperativeHandle, useState} from "react";
 import {KMARRoadListAppModel, KMARRoadListUIModel} from "@/models/mamba";
 import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
@@ -16,11 +16,13 @@ type KMARNextProps = {
     onAfterSubmit: () => void;
 }
 
-const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) => {
+const KMARNext = forwardRef<{
+    invalid: boolean
+}, KMARNextProps>(({ model, onBeforeSubmit, onAfterSubmit }, ref) => {
     const methods = useForm<KMARRoadListAppModel>({
         defaultValues: model,
     });
-    const { control, reset, register, handleSubmit } = methods;
+    const { control, reset, register, handleSubmit, formState: { errors } } = methods;
     const { fields, append, remove } = useFieldArray({
         control,
         name: "itineraries"
@@ -30,6 +32,12 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
         control,
         name: ["itineraries", "startHours", "startFuel"],
     });
+
+    useImperativeHandle(ref, () => {
+        return {
+            invalid: !!errors?.root?.cumulativeTime
+        }
+    }, [errors?.root?.cumulativeTime]);
 
     const [cumulative, setCumulative] = useState<KMARRoadListUIModel>(() => {
         return calculateCumulative({
@@ -100,7 +108,7 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
                         </Field.Root>
                         <Field.Root w="auto">
                             <Field.Label>Напрацювання (год)</Field.Label>
-                            <Input size="xs" value={decimalToTimeString(startHours)} />
+                            <Input size="xs" disabled value={decimalToTimeString(startHours)} />
                         </Field.Root>
                     </HStack>
                 </VStack>
@@ -144,6 +152,6 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
             </VStack>
         </form>
     </FormProvider>
-}
+})
 
-export default memo<KMARNextProps>(KMARNext)
+export default memo(KMARNext)

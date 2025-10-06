@@ -1,5 +1,5 @@
 'use client';
-import {FC, memo, useCallback, useEffect, useState} from "react";
+import {forwardRef, memo, useCallback, useEffect, useImperativeHandle, useState} from "react";
 import {MambaRoadListAppModel, MambaRoadListUIModel} from "@/models/mamba";
 import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
@@ -16,11 +16,13 @@ type MambaNextProps = {
     onAfterSubmit: () => void;
 }
 
-const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) => {
+const MambaNext = forwardRef<{
+    invalid: boolean
+}, MambaNextProps>(({ model, onBeforeSubmit, onAfterSubmit }, ref) => {
     const methods = useForm<MambaRoadListAppModel>({
         defaultValues: model,
     });
-    const { control, reset, register, handleSubmit } = methods;
+    const { control, reset, register, handleSubmit, formState: { errors } } = methods;
     const { fields, append, remove } = useFieldArray({
         control,
         name: "itineraries"
@@ -30,6 +32,12 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
         control,
         name: ["itineraries", "startHours", "startFuel"],
     });
+
+    useImperativeHandle(ref, () => {
+        return {
+            invalid: !!errors?.root?.cumulativeTime
+        }
+    }, [errors?.root?.cumulativeTime]);
 
     const [cumulative, setCumulative] = useState<MambaRoadListUIModel>(() => {
         return calculateCumulative({
@@ -151,6 +159,6 @@ const MambaNext: FC<MambaNextProps> = ({ model, onBeforeSubmit, onAfterSubmit })
             </VStack>
         </form>
     </FormProvider>
-}
+})
 
-export default memo<MambaNextProps>(MambaNext)
+export default memo(MambaNext)

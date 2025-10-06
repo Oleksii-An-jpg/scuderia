@@ -1,5 +1,5 @@
 'use client';
-import {forwardRef, memo, useCallback, useEffect, useImperativeHandle, useState} from "react";
+import {FC, memo, useCallback, useEffect, useState} from "react";
 import {KMARRoadListAppModel, KMARRoadListUIModel} from "@/models/mamba";
 import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
@@ -16,13 +16,11 @@ type KMARNextProps = {
     onAfterSubmit: () => void;
 }
 
-const KMARNext = forwardRef<{
-    invalid: boolean
-}, KMARNextProps>(({ model, onBeforeSubmit, onAfterSubmit }, ref) => {
+const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) => {
     const methods = useForm<KMARRoadListAppModel>({
         defaultValues: model,
     });
-    const { control, reset, register, handleSubmit, formState: { errors } } = methods;
+    const { control, reset, register, handleSubmit } = methods;
     const { fields, append, remove } = useFieldArray({
         control,
         name: "itineraries"
@@ -32,12 +30,6 @@ const KMARNext = forwardRef<{
         control,
         name: ["itineraries", "startHours", "startFuel"],
     });
-
-    useImperativeHandle(ref, () => {
-        return {
-            invalid: !!errors?.root?.cumulativeTime
-        }
-    }, [errors?.root?.cumulativeTime]);
 
     const [cumulative, setCumulative] = useState<KMARRoadListUIModel>(() => {
         return calculateCumulative({
@@ -152,6 +144,6 @@ const KMARNext = forwardRef<{
             </VStack>
         </form>
     </FormProvider>
-})
+}
 
 export default memo(KMARNext)

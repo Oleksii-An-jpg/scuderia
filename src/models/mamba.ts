@@ -87,9 +87,10 @@ export type KMARRoadListUIModel = RoadListUIModel<KMARAppModelItinerary>
 
 export class Converter implements FirestoreDataConverter<(MambaRoadListAppModel | KMARRoadListAppModel), BaseRoadListDBModel> {
     toFirestore(model: MambaRoadListAppModel | KMARRoadListAppModel): WithFieldValue<BaseRoadListDBModel> {
-        const { start, end, itineraries, ...rest } = model;
+        const { start, end, itineraries, startHours, ...rest } = model;
         return {
             ...rest,
+            startHours: Math.floor(startHours * 100) / 100,
             start: Timestamp.fromDate(start),
             end: Timestamp.fromDate(end),
             itineraries: itineraries.map(it => ({
@@ -110,7 +111,7 @@ export class Converter implements FirestoreDataConverter<(MambaRoadListAppModel 
             start: data.start.toDate(),
             end: data.end.toDate(),
             startFuel: data.startFuel,
-            startHours: data.startHours,
+            startHours: Math.floor(data.startHours * 100) / 100,
         }
 
         if (data.vehicle === Vehicle.MAMBA) {

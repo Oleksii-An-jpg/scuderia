@@ -46,6 +46,7 @@ export type BaseRoadListAppModel<T = BaseAppModelItinerary> = {
     startFuel: number; // Fuel at the start of the shift
     startHours: number; // Hours at the start of the shift
     itineraries: T[];
+    roadListID: string | null;
 }
 
 export type BaseRoadListDBModel<T = (MambaDBModelItinerary | KMARDBModelItinerary)> = {
@@ -56,6 +57,7 @@ export type BaseRoadListDBModel<T = (MambaDBModelItinerary | KMARDBModelItinerar
     startFuel: number; // Fuel at the start of the shift
     startHours: number; // Hours at the start of the shift
     itineraries: T[];
+    roadListID: string | null;
 }
 
 export type MambaRoadListAppModel = BaseRoadListAppModel<MambaAppModelItinerary> & {
@@ -87,7 +89,7 @@ export type KMARRoadListUIModel = RoadListUIModel<KMARAppModelItinerary>
 
 export class Converter implements FirestoreDataConverter<(MambaRoadListAppModel | KMARRoadListAppModel), BaseRoadListDBModel> {
     toFirestore(model: MambaRoadListAppModel | KMARRoadListAppModel): WithFieldValue<BaseRoadListDBModel> {
-        const { start, end, itineraries, startHours, ...rest } = model;
+        const { start, end, itineraries, startHours, roadListID, ...rest } = model;
         return {
             ...rest,
             startHours: Math.floor(startHours * 100) / 100,
@@ -96,7 +98,8 @@ export class Converter implements FirestoreDataConverter<(MambaRoadListAppModel 
             itineraries: itineraries.map(it => ({
                 ...it,
                 date: Timestamp.fromDate(it.date),
-            }))
+            })),
+            roadListID: roadListID || null,
         };
     }
 
@@ -112,6 +115,7 @@ export class Converter implements FirestoreDataConverter<(MambaRoadListAppModel 
             end: data.end.toDate(),
             startFuel: data.startFuel,
             startHours: Math.floor(data.startHours * 100) / 100,
+            roadListID: data.roadListID,
         }
 
         if (data.vehicle === Vehicle.MAMBA) {

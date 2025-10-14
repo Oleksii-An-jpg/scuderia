@@ -98,10 +98,14 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
                             />
                         </Field.Root>
                         <Field.Root w="auto">
-                            <Field.Label>Напрацювання (год)</Field.Label>
+                            <Field.Label>Напрацювання (год.дес)</Field.Label>
                             <Input step={0.01} autoComplete="off" size="xs" {...register('startHours', {
                                 valueAsNumber: true
                             })} />
+                        </Field.Root>
+                        <Field.Root w="auto">
+                            <Field.Label>Дорожній лист</Field.Label>
+                            <Input size="xs" autoComplete="off" {...register("roadListID")} />
                         </Field.Root>
                     </HStack>
                 </VStack>

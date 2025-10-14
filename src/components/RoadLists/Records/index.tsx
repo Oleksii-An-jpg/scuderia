@@ -19,6 +19,9 @@ const Records: FC<RecordsProps> = ({ models, onOpen, loading }) => {
                     <Heading size="sm">Період</Heading>
                 </Table.ColumnHeader>
                 <Table.ColumnHeader>
+                    <Heading size="sm">Дорожній лист</Heading>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader>
                     <Heading size="sm">Загальна тривалість</Heading>
                 </Table.ColumnHeader>
                 <Table.ColumnHeader>
@@ -81,6 +84,9 @@ const Records: FC<RecordsProps> = ({ models, onOpen, loading }) => {
                                 }).format(model.end)}
                                 </Text>
                             </Badge>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Text fontWeight="bold">{model.roadListID}</Text>
                         </Table.Cell>
                         <Table.Cell>
                             <Text fontWeight="bold">{decimalToTimeString(model.hours)}</Text>

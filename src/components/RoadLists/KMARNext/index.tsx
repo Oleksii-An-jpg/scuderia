@@ -1,13 +1,14 @@
 'use client';
 import {FC, memo, useCallback, useEffect, useState} from "react";
 import {KMARRoadListAppModel, KMARRoadListUIModel} from "@/models/mamba";
-import {FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
+import {Controller, FormProvider, useFieldArray, useForm, useWatch} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
 import {Button, Field, Grid, GridItem, Heading, HStack, Input, Separator, Text, VStack} from "@chakra-ui/react";
 import Summary from "@/components/RoadLists/KMARNext/Summary";
 import {BiPlus} from "react-icons/bi";
 import Record from "@/components/RoadLists/KMARNext/Record";
 import {upsertDoc} from "@/db";
+import DatePicker from "react-datepicker";
 
 type KMARNextProps = {
     model: KMARRoadListAppModel
@@ -58,7 +59,7 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
 
         const dates = data.itineraries.map(item => item.date.getTime());
 
-        const minDate = new Date(Math.min(...dates));
+        const minDate = data.start || new Date(Math.min(...dates));
         const maxDate = new Date(Math.max(...dates));
 
         await upsertDoc({
@@ -106,6 +107,22 @@ const KMARNext: FC<KMARNextProps> = ({ model, onBeforeSubmit, onAfterSubmit }) =
                         <Field.Root w="auto">
                             <Field.Label>Дорожній лист</Field.Label>
                             <Input size="xs" autoComplete="off" {...register("roadListID")} />
+                        </Field.Root>
+                        <Field.Root w="auto">
+                            <Field.Label>Дата початку</Field.Label>
+                            <Controller
+                                name={`start`}
+                                control={control}
+                                render={({ field }) => (
+                                    <DatePicker
+                                        popperPlacement="top-end"
+                                        dateFormat="dd/MM/yyyy"
+                                        selected={field.value}
+                                        onChange={field.onChange}
+                                        customInput={<Input variant="subtle" name={field.name} size="2xs" />}
+                                    />
+                                )}
+                            />
                         </Field.Root>
                     </HStack>
                 </VStack>

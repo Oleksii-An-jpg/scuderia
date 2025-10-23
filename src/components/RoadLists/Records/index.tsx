@@ -1,17 +1,18 @@
 import {FC, memo} from "react";
-import {Badge, Button, EmptyState, Heading, Skeleton, Table, Text, VStack} from "@chakra-ui/react";
+import {Badge, Button, EmptyState, Heading, HStack, IconButton, Skeleton, Table, Text, VStack} from "@chakra-ui/react";
 import {decimalToTimeString} from "@/components/TimeInput";
 import {KMARRoadListUIModel, MambaRoadListUIModel} from "@/models/mamba";
 import "react-datepicker/dist/react-datepicker.css";
-import {BiBowlHot} from "react-icons/bi";
+import {BiBowlHot, BiTrash} from "react-icons/bi";
 
 type RecordsProps = {
     loading: boolean;
     models?: (MambaRoadListUIModel | KMARRoadListUIModel)[];
     onOpen: (id: string) => void;
+    onDelete: (id: string) => void
 }
 
-const Records: FC<RecordsProps> = ({ models, onOpen, loading }) => {
+const Records: FC<RecordsProps> = ({ models, onOpen, loading, onDelete }) => {
     return <Table.Root>
         <Table.Header>
             <Table.Row>
@@ -98,11 +99,24 @@ const Records: FC<RecordsProps> = ({ models, onOpen, loading }) => {
                             <Text fontWeight="bold">{model.cumulativeFuel}</Text>
                         </Table.Cell>
                         <Table.Cell textAlign="right">
-                            <Button size="xs" onClick={() => {
-                                onOpen(model.id)
-                            }}>
-                                Переглянути
-                            </Button>
+                            <HStack>
+                                <Button size="xs" onClick={() => {
+                                    onOpen(model.id)
+                                }}>
+                                    Переглянути
+                                </Button>
+                                <IconButton
+                                    onClick={() => {
+                                        onDelete(model.id)
+                                    }}
+                                    size="xs"
+                                    colorPalette="red"
+                                    variant="outline"
+                                    aria-label="Видалити"
+                                >
+                                    <BiTrash />
+                                </IconButton>
+                            </HStack>
                         </Table.Cell>
                     </Table.Row>
                 )

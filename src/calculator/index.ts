@@ -33,7 +33,7 @@ export function calculateCumulative(
 
     if (isMambaRoadList(roadList)) {
         const enhancedItineraries = roadList.itineraries.map(it => {
-            const rowHours = (it.hh || 0) + (it.mh || 0) + (it.sh || 0) + (it.ph || 0);
+            const rowHours = Math.round((it.hh || 0) + (it.mh || 0) + (it.sh || 0) + (it.ph || 0)) * 100 / 100;
             const rowConsumed = Math.ceil(Math.round((
                 (it.hh || 0) * RATES[Vehicle.MAMBA].hh +
                 (it.mh || 0) * RATES[Vehicle.MAMBA].mh +

@@ -48,47 +48,31 @@ export async function upsertDoc(
 
         const batch = writeBatch(db);
 
-        // Start with the values from the previous record (before the updated one)
-        let prevCumulativeHours: number;
-        let prevCumulativeFuel: number;
+        // First, write the updated record itself
+        batch.set(docRef, data, { merge: true });
 
-        if (updatedIndex > 0) {
-            // Calculate the previous record to get its ending values
-            const prevRoadList = roadLists[updatedIndex - 1];
-            const prevCalculated = calculateCumulative(prevRoadList);
-            prevCumulativeHours = prevCalculated.cumulativeHours;
-            prevCumulativeFuel = prevCalculated.cumulativeFuel;
-        } else {
-            // First record uses its own start values
-            prevCumulativeHours = roadLists[0].startHours;
-            prevCumulativeFuel = roadLists[0].startFuel;
-        }
-
-        // Recalculate from the updated record onwards
-        for (let i = updatedIndex; i < roadLists.length; i++) {
+        // Then recalculate subsequent records
+        for (let i = updatedIndex + 1; i < roadLists.length; i++) {
             const currentRoadList = roadLists[i];
 
-            // Use the accumulated values from the previous iteration
-            const recalculated = calculateCumulative({
-                ...currentRoadList,
-                startHours: prevCumulativeHours,
-                startFuel: prevCumulativeFuel,
-            });
+            // Get the ending values from the previous record
+            const prevRoadList = roadLists[i - 1];
+            const prevCalculated = calculateCumulative(prevRoadList);
 
-            // Store only the input values
-            const docRef = doc(roadListsRef, currentRoadList.id);
-            batch.set(docRef, {
+            // Store only the input values with updated start values
+            const currentDocRef = doc(roadListsRef, currentRoadList.id);
+            batch.set(currentDocRef, {
                 ...currentRoadList,
-                startHours: prevCumulativeHours,
-                startFuel: prevCumulativeFuel,
+                startHours: prevCalculated.cumulativeHours,
+                startFuel: prevCalculated.cumulativeFuel,
             }, { merge: true });
 
-            // Update for next iteration
-            prevCumulativeHours = recalculated.cumulativeHours;
-            prevCumulativeFuel = recalculated.cumulativeFuel;
-
             // Update in-memory array
-            roadLists[i] = recalculated;
+            roadLists[i] = calculateCumulative({
+                ...currentRoadList,
+                startHours: prevCalculated.cumulativeHours,
+                startFuel: prevCalculated.cumulativeFuel,
+            });
         }
 
         await batch.commit();
@@ -116,6 +100,56 @@ export class RoadListStore {
     getById(id: string) {
         return this.records.get(id);
     }
+}
+
+export async function deleteDoc(id: string, vehicle: Vehicle): Promise<void> {
+    const docRef = doc(roadListsRef, id);
+    const store = await getAllRoadListsNext();
+    const roadLists = store.getByVehicle(vehicle);
+
+    // Find the record to delete
+    const deletedIndex = roadLists.findIndex(rl => rl.id === id);
+
+    if (deletedIndex === -1) {
+        throw new Error(`RoadList with id ${id} not found`);
+    }
+
+    const batch = writeBatch(db);
+
+    // Delete the record
+    batch.delete(docRef);
+
+    // Recalculate subsequent records
+    for (let i = deletedIndex + 1; i < roadLists.length; i++) {
+        const currentRoadList = roadLists[i];
+
+        // Get the ending values from the previous record (or initial values if this is now the first)
+        let prevCumulativeHours: number;
+        let prevCumulativeFuel: number;
+
+        if (deletedIndex > 0) {
+            // Use the record before the deleted one
+            const prevRoadList = roadLists[deletedIndex - 1];
+            const prevCalculated = calculateCumulative(prevRoadList);
+            prevCumulativeHours = prevCalculated.cumulativeHours;
+            prevCumulativeFuel = prevCalculated.cumulativeFuel;
+        } else {
+            // The deleted record was first, so the next record becomes first
+            // Use the first remaining record's original start values
+            prevCumulativeHours = roadLists[i].startHours;
+            prevCumulativeFuel = roadLists[i].startFuel;
+        }
+
+        // Store only the input values with updated start values
+        const currentDocRef = doc(roadListsRef, currentRoadList.id);
+        batch.set(currentDocRef, {
+            ...currentRoadList,
+            startHours: prevCumulativeHours,
+            startFuel: prevCumulativeFuel,
+        }, { merge: true });
+    }
+
+    await batch.commit();
 }
 
 export async function getAllRoadListsNext() {

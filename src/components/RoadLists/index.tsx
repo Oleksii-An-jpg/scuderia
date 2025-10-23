@@ -1,6 +1,6 @@
 'use client';
 import {FC, useCallback, useEffect, useMemo, useRef, useState, memo} from "react";
-import {getAllRoadListsNext, RoadListStore} from "@/db";
+import {deleteDoc, getAllRoadListsNext, RoadListStore} from "@/db";
 import {Card, VStack, Tabs, Dialog, Portal, Button, CloseButton} from "@chakra-ui/react";
 import {useBoolean} from "usehooks-ts";
 import {KMARRoadListAppModel, MambaRoadListAppModel, Vehicle} from "@/models/mamba";
@@ -17,8 +17,10 @@ type Values = {
 const RoadLists: FC = () => {
     const [store, setStore] = useState<RoadListStore>();
     const { value: loading, setValue: setLoading, toggle } = useBoolean(false);
+    const { handleSubmit, formState: { isSubmitting } } = useForm()
     const [id, setID] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false)
     const sync = useCallback(async () => {
         toggle()
         const result = await getAllRoadListsNext();
@@ -101,12 +103,18 @@ const RoadLists: FC = () => {
                         <Records loading={loading} models={byVehicle} onOpen={(id) => {
                             setID(id);
                             setOpen(true);
+                        }} onDelete={(id) => {
+                            setID(id);
+                            setDeleteOpen(true)
                         }} />
                     </Tabs.Content>
                     <Tabs.Content value={Vehicle.KMAR}>
                         <Records loading={loading} models={byVehicle} onOpen={(id: string) => {
                             setID(id);
                             setOpen(true);
+                        }} onDelete={(id) => {
+                            setID(id);
+                            setDeleteOpen(true)
                         }} />
                     </Tabs.Content>
                 </Tabs.Root>} name="vehicle" />
@@ -155,6 +163,47 @@ const RoadLists: FC = () => {
                                 <Button variant="outline">Скасувати</Button>
                             </Dialog.ActionTrigger>
                             <Button loading={loading} form="upsert" type="submit">Зберегти</Button>
+                        </Dialog.Footer>
+                        <Dialog.CloseTrigger asChild>
+                            <CloseButton size="sm" />
+                        </Dialog.CloseTrigger>
+                    </Dialog.Content>
+                </Dialog.Positioner>
+            </Portal>
+        </Dialog.Root>
+
+        <Dialog.Root role="alertdialog" open={deleteOpen} onOpenChange={(e) => setDeleteOpen(e.open)}>
+            <Portal>
+                <Dialog.Backdrop />
+                <Dialog.Positioner>
+                    <Dialog.Content maxH="100%">
+                        <Dialog.Header>
+                            <Dialog.Title>Видалити дорожній лист від {new Intl.DateTimeFormat('uk-UA', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: '2-digit'
+                            }).format(model?.start)} по {new Intl.DateTimeFormat('uk-UA', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: '2-digit'
+                            }).format(model?.end)}</Dialog.Title>
+                        </Dialog.Header>
+                        <Dialog.Body>
+                            Цю дію неможливо скасувати. Це призведе до остаточного видалення дорожнього листу з системи.
+                        </Dialog.Body>
+                        <Dialog.Footer>
+                            <Dialog.ActionTrigger asChild>
+                                <Button variant="outline">Скасувати</Button>
+                            </Dialog.ActionTrigger>
+                            <form onSubmit={handleSubmit(async () => {
+                                if (model) {
+                                    await deleteDoc(model.id, model.vehicle);
+                                    await sync();
+                                    setDeleteOpen(false);
+                                }
+                            })}>
+                                <Button colorPalette="red" loading={isSubmitting} type="submit">Видалити</Button>
+                            </form>
                         </Dialog.Footer>
                         <Dialog.CloseTrigger asChild>
                             <CloseButton size="sm" />

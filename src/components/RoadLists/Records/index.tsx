@@ -28,9 +28,10 @@ const Records: FC<RecordsProps> = ({ models, onOpen, loading, onDelete }) => {
                 <Table.ColumnHeader>
                     <Heading size="sm">Загальний розхід</Heading>
                 </Table.ColumnHeader>
-                <Table.ColumnHeader colSpan={2}>
+                <Table.ColumnHeader>
                     <Heading size="sm">Залишок на кінець зміни</Heading>
                 </Table.ColumnHeader>
+                <Table.ColumnHeader />
             </Table.Row>
         </Table.Header>
         <Table.Body>

@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+@layer base {
+    /* Target the internal clock icon inside <input type="time"> */
+    input[type="time"]::-webkit-calendar-picker-indicator {
+        @apply pointer-events-auto; /* still clickable */
+    }
+
+    /* Make sure the icon can’t be focused or activated via keyboard */
+    input[type="time"]::-webkit-calendar-picker-indicator:focus {
+        outline: none;
+    }
+
+    /* Prevent focus from ever landing on the icon */
+    input[type="time"]::-webkit-calendar-picker-indicator {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Trick to skip it in tab order (shadow DOM doesn’t support tabindex, but we can force focus back to input) */
+    input[type="time"]:focus::-webkit-calendar-picker-indicator {
+        display: none;
+    }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

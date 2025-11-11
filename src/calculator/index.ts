@@ -71,7 +71,7 @@ export function calculateCumulative(
                 (it.hh || 0) * RATES[Vehicle.KMAR].hh +
                 (it.mh || 0) * RATES[Vehicle.KMAR].mh +
                 (it.sh || 0) * RATES[Vehicle.KMAR].sh
-            ) * 100) / 100;
+            ));
 
             cumulativeHours += rowHours;
             cumulativeFuel += (it.fuel || 0) - rowConsumed;

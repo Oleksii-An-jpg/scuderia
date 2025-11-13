@@ -1,9 +1,32 @@
-import {FC, memo} from "react";
-import {Badge, Button, EmptyState, Heading, HStack, IconButton, Skeleton, Table, Text, VStack} from "@chakra-ui/react";
+import {FC, memo, useState, useMemo} from "react";
+import {
+    Badge,
+    Box,
+    Button,
+    EmptyState,
+    Heading,
+    HStack,
+    IconButton,
+    Skeleton,
+    Table,
+    Text,
+    VStack,
+    NativeSelect
+} from "@chakra-ui/react";
 import {decimalToTimeString} from "@/components/TimeInput";
 import {KMARRoadListUIModel, MambaRoadListUIModel} from "@/models/mamba";
 import "react-datepicker/dist/react-datepicker.css";
-import {BiBowlHot, BiTrash} from "react-icons/bi";
+import {BiBowlHot, BiFirstPage, BiLastPage, BiLeftArrowAlt, BiRightArrowAlt, BiTrash} from "react-icons/bi";
+import {
+    ColumnDef,
+    PaginationState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable,
+} from '@tanstack/react-table'
 
 type RecordsProps = {
     loading: boolean;
@@ -12,30 +35,155 @@ type RecordsProps = {
     onDelete: (id: string) => void
 }
 
-const Records: FC<RecordsProps> = ({ models, onOpen, loading, onDelete }) => {
+const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) => {
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 10,
+    });
+
+    const columns = useMemo<ColumnDef<MambaRoadListUIModel | KMARRoadListUIModel>[]>(
+        () => [
+            {
+                accessorKey: 'id',
+                header: 'Період',
+                cell: info => {
+                    const model = info.row.original;
+                    return <Badge colorPalette="blue" size="lg">
+                        <Text fontWeight="bold">
+                            {new Intl.DateTimeFormat('uk-UA', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: '2-digit'
+                            }).format(model.start)} — {new Intl.DateTimeFormat('uk-UA', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            year: '2-digit'
+                        }).format(model.end)}
+                        </Text>
+                    </Badge>
+                },
+                sortingFn: (rowA, rowB) => {
+                    const a = rowA.original as MambaRoadListUIModel | KMARRoadListUIModel;
+                    const b = rowB.original as MambaRoadListUIModel | KMARRoadListUIModel;
+
+                    const aTime = a.start.getTime();
+                    const bTime = b.start.getTime();
+
+                    if (aTime > bTime) {
+                        return 1;
+                    }
+                    if (aTime < bTime) {
+                        return -1;
+                    }
+                    return 0;
+                }
+            },
+            {
+                header: 'Дорожній лист',
+                accessorKey: 'roadListID',
+                cell: info => {
+                    const model = info.row.original;
+                    return <Text fontWeight="bold">{model.roadListID}</Text>
+                },
+            },
+            {
+                header: 'Загальна тривалість',
+                accessorKey: 'hours',
+                cell: info => {
+                    const model = info.row.original;
+
+                    return <Text fontWeight="bold">{decimalToTimeString(model.hours)}</Text>
+                },
+            },
+            {
+                header: 'Загальний розхід',
+                accessorKey: 'fuel',
+                cell: info => {
+                    const model = info.row.original;
+                    return <Text fontWeight="bold">{model.fuel}</Text>
+                },
+            },
+            {
+                header: 'Залишок на кінець зміни',
+                accessorKey: 'cumulativeFuel',
+                cell: info => {
+                    const model = info.row.original;
+                    return <Text fontWeight="bold">{model.cumulativeFuel}</Text>
+                }
+            },
+            {
+                id: 'actions',
+                cell: info => {
+                    const model = info.row.original;
+                    return <HStack justifyContent="flex-end">
+                        <Button size="xs" onClick={() => {
+                            onOpen(model.id)
+                        }}>
+                            Переглянути
+                        </Button>
+                        <IconButton
+                            onClick={() => {
+                                onDelete(model.id)
+                            }}
+                            size="xs"
+                            colorPalette="red"
+                            variant="outline"
+                            aria-label="Видалити"
+                        >
+                            <BiTrash />
+                        </IconButton>
+                    </HStack>
+                }
+            }
+        ],
+        []
+    )
+
+    const table = useReactTable({
+        columns,
+        data: models,
+        debugTable: true,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        onPaginationChange: setPagination,
+        //no need to pass pageCount or rowCount with client-side pagination as it is calculated automatically
+        state: {
+            pagination,
+        },
+        // autoResetPageIndex: false, // turn off page index reset when sorting or filtering
+    })
     return <Table.Root>
         <Table.Header>
-            <Table.Row>
-                <Table.ColumnHeader>
-                    <Heading size="sm">Період</Heading>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader>
-                    <Heading size="sm">Дорожній лист</Heading>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader>
-                    <Heading size="sm">Загальна тривалість</Heading>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader>
-                    <Heading size="sm">Загальний розхід</Heading>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader>
-                    <Heading size="sm">Залишок на кінець зміни</Heading>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader />
-            </Table.Row>
+            {table.getHeaderGroups().map(headerGroup => (
+                <Table.Row key={headerGroup.id}>
+                    {headerGroup.headers.map(header => {
+                        return (
+                            <Table.ColumnHeader key={header.id} colSpan={header.colSpan}>
+                                <Heading {...{
+                                    className: header.column.getCanSort()
+                                        ? 'cursor-pointer select-none'
+                                        : '',
+                                    onClick: header.column.getToggleSortingHandler(),
+                                }} size="sm">
+                                    {flexRender(
+                                        header.column.columnDef.header,
+                                        header.getContext()
+                                    )}
+                                    {{
+                                        asc: ' 🔼',
+                                        desc: ' 🔽',
+                                    }[header.column.getIsSorted() as string] ?? null}
+                                </Heading>
+                            </Table.ColumnHeader>
+                        )
+                    })}
+                </Table.Row>
+            ))}
         </Table.Header>
         <Table.Body>
-            {loading || !models ? Array.from({ length: 10 }).map((_, index) => (
+            {loading || !models.length ? Array.from({ length: 10 }).map((_, index) => (
                 <Table.Row key={index}>
                     <Table.Cell>
                         <Skeleton height="20px" />
@@ -69,60 +217,87 @@ const Records: FC<RecordsProps> = ({ models, onOpen, loading, onDelete }) => {
                         </EmptyState.Content>
                     </EmptyState.Root>
                 </Table.Cell>
-            </Table.Row> : models.map((model, index) => {
+            </Table.Row> : table.getRowModel().rows.map(row => {
                 return (
-                    <Table.Row key={index}>
-                        <Table.Cell>
-                            <Badge colorPalette="blue" size="lg">
-                                <Text fontWeight="bold">
-                                    {new Intl.DateTimeFormat('uk-UA', {
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        year: '2-digit'
-                                    }).format(model.start)} — {new Intl.DateTimeFormat('uk-UA', {
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    year: '2-digit'
-                                }).format(model.end)}
-                                </Text>
-                            </Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Text fontWeight="bold">{model.roadListID}</Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Text fontWeight="bold">{decimalToTimeString(model.hours)}</Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Text fontWeight="bold">{model.fuel}</Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Text fontWeight="bold">{model.cumulativeFuel}</Text>
-                        </Table.Cell>
-                        <Table.Cell textAlign="right">
-                            <HStack>
-                                <Button size="xs" onClick={() => {
-                                    onOpen(model.id)
-                                }}>
-                                    Переглянути
-                                </Button>
-                                <IconButton
-                                    onClick={() => {
-                                        onDelete(model.id)
-                                    }}
-                                    size="xs"
-                                    colorPalette="red"
-                                    variant="outline"
-                                    aria-label="Видалити"
-                                >
-                                    <BiTrash />
-                                </IconButton>
-                            </HStack>
-                        </Table.Cell>
+                    <Table.Row key={row.id}>
+                        {row.getVisibleCells().map(cell => {
+                            return (
+                                <Table.Cell key={cell.id}>
+                                    {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                    )}
+                                </Table.Cell>
+                            )
+                        })}
                     </Table.Row>
                 )
             })}
         </Table.Body>
+        <Table.Footer>
+            <Table.Row>
+                <Table.Cell colSpan={columns.length}>
+                    <VStack align="stretch">
+                        <HStack justifyContent="space-between">
+                            <HStack>
+                                <IconButton
+                                    size="xs"
+                                    onClick={() => table.firstPage()}
+                                    disabled={!table.getCanPreviousPage()}
+                                >
+                                    <BiFirstPage />
+                                </IconButton>
+                                <IconButton
+                                    size="xs"
+                                    onClick={() => table.previousPage()}
+                                    disabled={!table.getCanPreviousPage()}
+                                >
+                                    <BiLeftArrowAlt />
+                                </IconButton>
+                                <IconButton
+                                    size="xs"
+                                    onClick={() => table.nextPage()}
+                                    disabled={!table.getCanNextPage()}
+                                >
+                                    <BiRightArrowAlt />
+                                </IconButton>
+                                <IconButton
+                                    size="xs"
+                                    onClick={() => table.lastPage()}
+                                    disabled={!table.getCanNextPage()}
+                                >
+                                    <BiLastPage />
+                                </IconButton>
+                                <Text>Сторінка</Text>
+                                <Text fontWeight="bold" className="whitespace-nowrap">
+                                    {table.getState().pagination.pageIndex + 1} із{' '}
+                                    {table.getPageCount().toLocaleString()}
+                                </Text>
+                            </HStack>
+                            <Box>
+                                <NativeSelect.Root size="xs">
+                                    <NativeSelect.Field value={table.getState().pagination.pageSize}
+                                                        onChange={e => {
+                                                            table.setPageSize(Number(e.target.value))
+                                                        }}>
+                                        {[10, 20, 30, 40, 50].map(pageSize => (
+                                            <option key={pageSize} value={pageSize}>
+                                                Показати {pageSize}
+                                            </option>
+                                        ))}
+                                    </NativeSelect.Field>
+                                    <NativeSelect.Indicator />
+                                </NativeSelect.Root>
+                            </Box>
+                        </HStack>
+                        <Box>
+                            Показано {table.getRowModel().rows.length.toLocaleString()} з{' '}
+                            {table.getRowCount().toLocaleString()} записів
+                        </Box>
+                    </VStack>
+                </Table.Cell>
+            </Table.Row>
+        </Table.Footer>
     </Table.Root>
 }
 

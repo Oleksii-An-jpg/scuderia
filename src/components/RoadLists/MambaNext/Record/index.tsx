@@ -100,12 +100,12 @@ const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumul
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">
-                <Text fontWeight="bold">{Math.round(cumulativeHours * 100) / 100}</Text>
+                <Text fontWeight="bold">{Math.round(cumulativeHours * 10) / 10}</Text>
             </Badge>
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">
-                <Text fontWeight="bold">{Math.round(cumulativeHours * 100) / 100}</Text>
+                <Text fontWeight="bold">{Math.round(cumulativeHours * 10) / 10}</Text>
             </Badge>
         </GridItem>
         <GridItem>

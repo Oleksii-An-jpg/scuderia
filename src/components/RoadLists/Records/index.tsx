@@ -155,6 +155,14 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
         state: {
             pagination,
         },
+        initialState: {
+            sorting: [
+                {
+                    id: 'id',
+                    desc: true, // sort by name in descending order by default
+                },
+            ],
+        },
         // autoResetPageIndex: false, // turn off page index reset when sorting or filtering
     })
     return <Table.Root>

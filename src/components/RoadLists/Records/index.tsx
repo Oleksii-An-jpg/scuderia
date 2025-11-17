@@ -1,4 +1,4 @@
-import {FC, memo, useState, useMemo} from "react";
+import {FC, memo, useMemo, useState} from "react";
 import {
     Badge,
     Box,
@@ -7,30 +7,30 @@ import {
     Heading,
     HStack,
     IconButton,
+    NativeSelect,
     Skeleton,
     Table,
     Text,
-    VStack,
-    NativeSelect
+    VStack
 } from "@chakra-ui/react";
 import {decimalToTimeString} from "@/components/TimeInput";
-import {KMARRoadListUIModel, MambaRoadListUIModel} from "@/models/mamba";
+import {F250RoadListUIModel, KMARRoadListUIModel, MambaRoadListUIModel, Vehicle} from "@/models/mamba";
 import "react-datepicker/dist/react-datepicker.css";
 import {BiBowlHot, BiFirstPage, BiLastPage, BiLeftArrowAlt, BiRightArrowAlt, BiTrash} from "react-icons/bi";
 import {
     ColumnDef,
-    PaginationState,
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getPaginationRowModel,
     getSortedRowModel,
+    PaginationState,
     useReactTable,
 } from '@tanstack/react-table'
 
 type RecordsProps = {
     loading: boolean;
-    models?: (MambaRoadListUIModel | KMARRoadListUIModel)[];
+    models?: (MambaRoadListUIModel | KMARRoadListUIModel | F250RoadListUIModel)[];
     onOpen: (id: string) => void;
     onDelete: (id: string) => void
 }
@@ -41,7 +41,7 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
         pageSize: 10,
     });
 
-    const columns = useMemo<ColumnDef<MambaRoadListUIModel | KMARRoadListUIModel>[]>(
+    const columns = useMemo<ColumnDef<MambaRoadListUIModel | KMARRoadListUIModel | F250RoadListUIModel>[]>(
         () => [
             {
                 accessorKey: 'id',
@@ -87,12 +87,15 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
                 },
             },
             {
-                header: 'Загальна тривалість',
+                header: info => {
+                    const vehicle = info.table.getRowModel().rows[0]?.original.vehicle;
+                    return <Text>{(vehicle === Vehicle.F250 || vehicle === Vehicle.MASTER) ? 'Загальний пробіг (км)' : 'Загальна тривалість'}</Text>
+                },
                 accessorKey: 'hours',
                 cell: info => {
                     const model = info.row.original;
 
-                    return <Text fontWeight="bold">{decimalToTimeString(model.hours)}</Text>
+                    return <Text fontWeight="bold">{(model.vehicle === Vehicle.F250 || model.vehicle === Vehicle.MASTER) ? model.hours : decimalToTimeString(model.hours)}</Text>
                 },
             },
             {
@@ -183,7 +186,7 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
             ))}
         </Table.Header>
         <Table.Body>
-            {loading || !models.length ? Array.from({ length: 10 }).map((_, index) => (
+            {loading ? Array.from({ length: 10 }).map((_, index) => (
                 <Table.Row key={index}>
                     <Table.Cell>
                         <Skeleton height="20px" />

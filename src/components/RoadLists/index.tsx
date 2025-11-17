@@ -3,12 +3,14 @@ import {FC, useCallback, useEffect, useMemo, useRef, useState, memo} from "react
 import {deleteDoc, getAllRoadListsNext, RoadListStore} from "@/db";
 import {Card, VStack, Tabs, Dialog, Portal, Button, CloseButton} from "@chakra-ui/react";
 import {useBoolean} from "usehooks-ts";
-import {KMARRoadListAppModel, MambaRoadListAppModel, Vehicle} from "@/models/mamba";
+import {AppType, KMARRoadListAppModel, MambaRoadListAppModel, Vehicle} from "@/models/mamba";
 import {Controller, useForm} from "react-hook-form";
 import {calculateCumulative} from "@/calculator";
 import Records from "@/components/RoadLists/Records";
 import MambaNext from "@/components/RoadLists/MambaNext";
 import KMARNext from "@/components/RoadLists/KMARNext";
+import F250Next from "@/components/RoadLists/F250Next";
+import MasterNext from "@/components/RoadLists/MasterNext";
 
 type Values = {
     vehicle: Vehicle
@@ -16,16 +18,16 @@ type Values = {
 
 const RoadLists: FC = () => {
     const [store, setStore] = useState<RoadListStore>();
-    const { value: loading, setValue: setLoading, toggle } = useBoolean(false);
+    const { value: loading, setValue: setLoading } = useBoolean(true);
     const { handleSubmit, formState: { isSubmitting } } = useForm()
     const [id, setID] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false)
     const sync = useCallback(async () => {
-        toggle()
+        setLoading(true)
         const result = await getAllRoadListsNext();
         setStore(result);
-        toggle();
+        setLoading(false);
     }, []);
 
     const { watch, control } = useForm<Values>({
@@ -37,7 +39,7 @@ const RoadLists: FC = () => {
     const vehicle = watch("vehicle");
 
     const byVehicle = useMemo(() => store?.getByVehicle(vehicle).map(calculateCumulative).filter(m => m != null), [store, vehicle]);
-    const model: MambaRoadListAppModel | KMARRoadListAppModel | undefined = useMemo(() => {
+    const model: AppType | undefined = useMemo(() => {
         if (id) {
             return store?.getById(id);
         } else if (byVehicle) {
@@ -64,7 +66,7 @@ const RoadLists: FC = () => {
                         comment: undefined,
                     }],
                 } as unknown as MambaRoadListAppModel
-            } else {
+            } else if (vehicle === Vehicle.KMAR) {
                 return {
                     ...model,
                     vehicle,
@@ -76,6 +78,19 @@ const RoadLists: FC = () => {
                         hh: null,
                         mh: null,
                         total: null,
+                        comment: undefined,
+                    }],
+                } as unknown as KMARRoadListAppModel
+            } else if (vehicle === Vehicle.F250 || vehicle === Vehicle.MASTER) {
+                return {
+                    ...model,
+                    vehicle,
+                    itineraries: [{
+                        date: new Date(),
+                        br: null,
+                        fuel: null,
+                        hours: null,
+                        t: null,
                         comment: undefined,
                     }],
                 } as unknown as KMARRoadListAppModel
@@ -98,6 +113,12 @@ const RoadLists: FC = () => {
                         <Tabs.Trigger value={Vehicle.KMAR}>
                             KMAR
                         </Tabs.Trigger>
+                        <Tabs.Trigger value={Vehicle.F250}>
+                            Ford F250
+                        </Tabs.Trigger>
+                        <Tabs.Trigger value={Vehicle.MASTER}>
+                            Renault Master
+                        </Tabs.Trigger>
                     </Tabs.List>
                     <Tabs.Content value={Vehicle.MAMBA}>
                         <Records loading={loading} models={byVehicle} onOpen={(id) => {
@@ -109,6 +130,24 @@ const RoadLists: FC = () => {
                         }} />
                     </Tabs.Content>
                     <Tabs.Content value={Vehicle.KMAR}>
+                        <Records loading={loading} models={byVehicle} onOpen={(id: string) => {
+                            setID(id);
+                            setOpen(true);
+                        }} onDelete={(id) => {
+                            setID(id);
+                            setDeleteOpen(true)
+                        }} />
+                    </Tabs.Content>
+                    <Tabs.Content value={Vehicle.F250}>
+                        <Records loading={loading} models={byVehicle} onOpen={(id: string) => {
+                            setID(id);
+                            setOpen(true);
+                        }} onDelete={(id) => {
+                            setID(id);
+                            setDeleteOpen(true)
+                        }} />
+                    </Tabs.Content>
+                    <Tabs.Content value={Vehicle.MASTER}>
                         <Records loading={loading} models={byVehicle} onOpen={(id: string) => {
                             setID(id);
                             setOpen(true);
@@ -151,6 +190,20 @@ const RoadLists: FC = () => {
                                 setOpen(false);
                             }} model={model} />}
                             {model?.vehicle === Vehicle.KMAR && <KMARNext onBeforeSubmit={() => {
+                                setLoading(true);
+                            }} onAfterSubmit={async () => {
+                                await sync();
+                                setLoading(false);
+                                setOpen(false);
+                            }} model={model} />}
+                            {model?.vehicle === Vehicle.F250 && <F250Next onBeforeSubmit={() => {
+                                setLoading(true);
+                            }} onAfterSubmit={async () => {
+                                await sync();
+                                setLoading(false);
+                                setOpen(false);
+                            }} model={model} />}
+                            {model?.vehicle === Vehicle.MASTER && <MasterNext onBeforeSubmit={() => {
                                 setLoading(true);
                             }} onAfterSubmit={async () => {
                                 await sync();

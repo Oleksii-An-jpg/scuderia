@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import {
     Converter,
-    Vehicle, MambaRoadListAppModel, KMARRoadListAppModel
+    Vehicle, MambaRoadListAppModel, KMARRoadListAppModel, F250RoadListAppModel, MasterRoadListAppModel, AppType
 } from "@/models/mamba";
 import {QuerySnapshot} from "@firebase/firestore";
 import {calculateCumulative} from "@/calculator";
@@ -28,9 +28,9 @@ export const roadListsRef = collection(db, "road-lists").withConverter(
 );
 
 export async function upsertDoc(
-    data: WithFieldValue<MambaRoadListAppModel | KMARRoadListAppModel>,
+    data: WithFieldValue<AppType>,
     id?: string
-): Promise<DocumentReference<MambaRoadListAppModel | KMARRoadListAppModel>> {
+): Promise<DocumentReference<AppType>> {
     if (id) {
         const docRef = doc(roadListsRef, id);
         const store = await getAllRoadListsNext();
@@ -44,7 +44,7 @@ export async function upsertDoc(
             ...data,
             id,
             vehicle
-        } as (MambaRoadListAppModel | KMARRoadListAppModel);
+        } as (MambaRoadListAppModel | KMARRoadListAppModel | F250RoadListAppModel | MasterRoadListAppModel);
 
         const batch = writeBatch(db);
 
@@ -83,9 +83,9 @@ export async function upsertDoc(
 }
 
 export class RoadListStore {
-    private records: Map<string, MambaRoadListAppModel | KMARRoadListAppModel>;
+    private records: Map<string, AppType>;
 
-    constructor(snapshot: QuerySnapshot<MambaRoadListAppModel | KMARRoadListAppModel>) {
+    constructor(snapshot: QuerySnapshot<AppType>) {
         this.records = new Map(
             snapshot.docs.map(doc => [doc.id, doc.data()])
         );

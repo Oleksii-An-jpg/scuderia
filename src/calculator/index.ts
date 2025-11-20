@@ -128,7 +128,7 @@ export function calculateCumulative(
                 (it['10%'] || 0) * RATES[Vehicle.F250]['10%'] +
                 (it['15%'] || 0) * RATES[Vehicle.F250]['15%'] +
                 (it['4x4'] || 0) * RATES[Vehicle.F250]['4x4']
-            ));
+            ) * 100) / 100;
 
             cumulativeHours += rowHours;
             cumulativeFuel += (it.fuel || 0) - rowConsumed;
@@ -163,7 +163,7 @@ export function calculateCumulative(
                 (it['10%'] || 0) * RATES[Vehicle.MASTER]['10%'] +
                 (it['15%'] || 0) * RATES[Vehicle.MASTER]['15%'] +
                 (it['4x4'] || 0) * RATES[Vehicle.MASTER]['4x4']
-            ));
+            ) * 100) / 100;
 
             cumulativeHours += rowHours;
             cumulativeFuel += (it.fuel || 0) - rowConsumed;

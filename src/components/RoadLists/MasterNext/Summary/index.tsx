@@ -29,7 +29,7 @@ const Summary: FC<SummaryProps> = ({ itineraries, hours, fuel }) => {
             <GridItem><Heading textStyle="sm">{total['15%']}</Heading></GridItem>
             <GridItem><Heading textStyle="sm">{total['4x4']}</Heading></GridItem>
             <GridItem><Heading textStyle="sm">{hours}</Heading></GridItem>
-            <GridItem><Heading textStyle="sm">{fuel}</Heading></GridItem>
+            <GridItem><Heading textStyle="sm">{Math.round(fuel)}</Heading></GridItem>
         </>
     );
 }

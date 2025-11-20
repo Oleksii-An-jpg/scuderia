@@ -103,7 +103,7 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
                 accessorKey: 'fuel',
                 cell: info => {
                     const model = info.row.original;
-                    return <Text fontWeight="bold">{model.fuel}</Text>
+                    return <Text fontWeight="bold">{Math.round(model.fuel)}</Text>
                 },
             },
             {
@@ -111,7 +111,7 @@ const Records: FC<RecordsProps> = ({ models = [], onOpen, loading, onDelete }) =
                 accessorKey: 'cumulativeFuel',
                 cell: info => {
                     const model = info.row.original;
-                    return <Text fontWeight="bold">{model.cumulativeFuel}</Text>
+                    return <Text fontWeight="bold">{Math.round(model.cumulativeFuel)}</Text>
                 }
             },
             {

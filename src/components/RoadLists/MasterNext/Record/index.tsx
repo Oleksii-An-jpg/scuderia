@@ -95,12 +95,12 @@ const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumul
             </Field.Root>
         </GridItem>
         <GridItem alignSelf="center">
-            <Text textStyle="sm">{rowConsumed}</Text>
+            <Text textStyle="sm">{Math.round(rowConsumed)}</Text>
         </GridItem>
         <GridItem alignSelf="center">
             <Text textStyle="sm" {...(last && {
                 fontWeight: "bold",
-            })}>{cumulativeFuel}</Text>
+            })}>{Math.round(cumulativeFuel)}</Text>
         </GridItem>
         <GridItem alignSelf="center">
             <Badge colorPalette="purple" size="lg">

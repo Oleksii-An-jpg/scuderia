@@ -95,7 +95,7 @@ const Record: FC<RecordProps> = ({ index, onRemove, rowHours, rowConsumed, cumul
             </Field.Root>
         </GridItem>
         <GridItem alignSelf="center">
-            <Text textStyle="sm">{rowConsumed}</Text>
+            <Text textStyle="sm">{Math.round(rowConsumed)}</Text>
         </GridItem>
         <GridItem alignSelf="center">
             <Text textStyle="sm" {...(last && {

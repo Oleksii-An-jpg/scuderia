@@ -1,14 +1,14 @@
-'use client';
-import {Container} from "@chakra-ui/react";
-import RoadLists from "@/components/RoadLists";
-import {Suspense} from "react";
+'use server';
+import { getAllRoadListsServer } from '@/lib/firebaseAdmin';
+import StoreProvider from '@/components/StoreProvider';
+import RoadLists from '@/components/RoadLists';
 
-export default function Home() {
+export default async function Page() {
+    const initialRoadLists = await getAllRoadListsServer();
+
     return (
-        <Container>
-            <Suspense fallback={null}>
-                <RoadLists />
-            </Suspense>
-        </Container>
+        <StoreProvider initialRoadLists={initialRoadLists}>
+            <RoadLists />
+        </StoreProvider>
     );
 }

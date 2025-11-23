@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import {Itinerary, RoadList, SerializableRoadList} from '@/types/roadList';
+import { getFirestore } from 'firebase-admin/firestore';
+import {RoadList, SerializableRoadList} from '@/types/roadList';
+import {adminConverter} from "@/lib/converter";
 
 // Initialize Firebase Admin (only once)
 if (!getApps().length) {
@@ -14,36 +15,6 @@ if (!getApps().length) {
 }
 
 const adminDb = getFirestore();
-
-function firestoreToRoadList(doc: FirebaseFirestore.DocumentSnapshot): RoadList {
-    const data = doc.data() as unknown as RoadList;
-
-    return {
-        vehicle: data.vehicle,
-        roadListID: data.roadListID,
-        startFuel: data.startFuel,
-        startHours: data.startHours,
-        id: doc.id,
-        start: data.start instanceof Timestamp ? data.start.toDate() : new Date(data.start),
-        end: data.end instanceof Timestamp ? data.end.toDate() : new Date(data.end),
-        itineraries: data.itineraries.map((it) => {
-            const converted: Itinerary = {
-                br: it.br ? Number(it.br) : null,
-                fuel: it.fuel ? Number(it.fuel) : null,
-                comment: it.comment ? String(it.comment) : undefined,
-                date: it.date instanceof Timestamp ? it.date.toDate() : new Date(it.date),
-            };
-            for (const key in it) {
-                if (key === 'date') {
-                    converted.date = it.date instanceof Timestamp ? it.date.toDate() : new Date(it.date);
-                } else {
-                    converted[key] = it[key];
-                }
-            }
-            return converted;
-        }),
-    };
-}
 
 // Convert RoadList to serializable format (Dates -> ISO strings)
 function toSerializable(roadList: RoadList): SerializableRoadList {
@@ -60,13 +31,25 @@ function toSerializable(roadList: RoadList): SerializableRoadList {
 
 export async function getAllRoadListsServer(): Promise<SerializableRoadList[]> {
     try {
+        console.time('Firestore query');
         const snapshot = await adminDb
             .collection('road-lists')
+            .withConverter(adminConverter)
             .orderBy('end', 'asc')
             .get();
+        console.timeEnd('Firestore query');
 
-        const roadLists = snapshot.docs.map(firestoreToRoadList);
-        return roadLists.map(toSerializable);
+        console.time('Convert documents');
+        const roadLists = snapshot.docs.map(doc =>
+            doc.data()
+        );
+        console.timeEnd('Convert documents');
+
+        console.time('Serialize for client');
+        const serialized = roadLists.map(toSerializable);
+        console.timeEnd('Serialize for client');
+
+        return serialized;
     } catch (error) {
         console.error('Error fetching from Firestore:', error);
         throw error;

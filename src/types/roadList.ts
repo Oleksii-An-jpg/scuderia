@@ -7,7 +7,13 @@ export type Itinerary = {
     fuel: number | null;
     comment?: string;
     // Dynamic fields for speed modes or terrain types
-    [key: string]: number | null | Date | string | undefined;
+    // [key: string]: number | null | Date | string | undefined;
+}
+
+// Engine hours for boats
+export type EngineHours = {
+    left: number;
+    right: number;
 }
 
 export type RoadList = {
@@ -17,7 +23,8 @@ export type RoadList = {
     start: Date;
     end: Date;
     startFuel: number;
-    startHours: number;
+    // For boats: { left, right }, for cars: just a number (km)
+    startHours: EngineHours | number;
     itineraries: Itinerary[];
 }
 
@@ -35,7 +42,7 @@ export type SerializableRoadList = Omit<RoadList, 'start' | 'end' | 'itineraries
 export type CalculatedItinerary = Itinerary & {
     rowHours: number;
     rowConsumed: number;
-    cumulativeHours: number;
+    cumulativeHours: EngineHours | number;
     cumulativeFuel: number;
 }
 
@@ -43,8 +50,9 @@ export type CalculatedRoadList = RoadList & {
     itineraries: CalculatedItinerary[];
     hours: number;
     fuel: number;
-    cumulativeHours: number;
+    cumulativeHours: EngineHours | number;
     cumulativeFuel: number;
+    cumulativeReceivedFuel: number;
 }
 
 // Firestore converter types

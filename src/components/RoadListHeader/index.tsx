@@ -13,6 +13,7 @@ type Props = {
 
 const RoadListHeader: FC<Props> = ({ vehicle }) => {
     const { control, register } = useFormContext<RoadList>();
+    const isBoatVehicle = isBoat(vehicle);
 
     return (
         <VStack alignItems="stretch" gap={2}>
@@ -26,19 +27,6 @@ const RoadListHeader: FC<Props> = ({ vehicle }) => {
                         type="number"
                         step="1"
                         {...register('startFuel', { valueAsNumber: true })}
-                    />
-                </Field.Root>
-
-                <Field.Root w="auto">
-                    <Field.Label>
-                        {isBoat(vehicle) ? 'Напрацювання (год.дес)' : 'Загальний пробіг (км)'}
-                    </Field.Label>
-                    <Input
-                        size="xs"
-                        autoComplete="off"
-                        type="number"
-                        step={0.01}
-                        {...register('startHours', { valueAsNumber: true })}
                     />
                 </Field.Root>
 
@@ -63,6 +51,47 @@ const RoadListHeader: FC<Props> = ({ vehicle }) => {
                         )}
                     />
                 </Field.Root>
+
+                {isBoatVehicle ? (
+                    <>
+                        <Field.Root w="auto">
+                            <Field.Label>
+                                Л двигун (год.дес)
+                            </Field.Label>
+                            <Input
+                                size="xs"
+                                autoComplete="off"
+                                type="number"
+                                step={0.01}
+                                {...register('startHours.left', { valueAsNumber: true })}
+                            />
+                        </Field.Root>
+
+                        <Field.Root w="auto">
+                            <Field.Label>
+                                П двигун (год.дес)
+                            </Field.Label>
+                            <Input
+                                size="xs"
+                                autoComplete="off"
+                                type="number"
+                                step={0.01}
+                                {...register('startHours.right', { valueAsNumber: true })}
+                            />
+                        </Field.Root>
+                    </>
+                ) : <Field.Root w="auto">
+                    <Field.Label>
+                        Загальний пробіг (км)
+                    </Field.Label>
+                    <Input
+                        size="xs"
+                        autoComplete="off"
+                        type="number"
+                        step={0.01}
+                        {...register('startHours', { valueAsNumber: true })}
+                    />
+                </Field.Root>}
             </HStack>
         </VStack>
     );

@@ -1,14 +1,15 @@
-import { RoadList, CalculatedRoadList, CalculatedItinerary } from '@/types/roadList';
-import { VEHICLE_CONFIG } from '@/types/vehicle';
+import { RoadList, CalculatedRoadList, CalculatedItinerary, EngineHours } from '@/types/roadList';
+import { VEHICLE_CONFIG, isBoat } from '@/types/vehicle';
 
 export function calculateRoadList(
     roadList: RoadList,
     startFuel?: number,
-    startHours?: number
+    startHours?: EngineHours | number
 ): CalculatedRoadList {
     const config = VEHICLE_CONFIG[roadList.vehicle];
-    let cumulativeHours = startHours ?? roadList.startHours;
+    let cumulativeHours: EngineHours | number = startHours ?? roadList.startHours;
     let cumulativeFuel = startFuel ?? roadList.startFuel;
+    let cumulativeReceivedFuel = 0;
 
     const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
 
@@ -18,6 +19,7 @@ export function calculateRoadList(
 
         // Calculate based on vehicle type
         modes.forEach(mode => {
+            // @ts-expect-error: dynamic keys
             const value = (it[mode] as number) || 0;
             rowHours += value;
             rowConsumed += value * config.rates[mode];
@@ -29,14 +31,28 @@ export function calculateRoadList(
             ? Math.round(rowConsumed * 100) / 100
             : Math.round(rowConsumed);
 
-        cumulativeHours += rowHours;
+        // Update cumulative hours
+        if (isBoat(roadList.vehicle) && typeof cumulativeHours === 'object') {
+            // For boats: both engines accumulate the same rowHours
+            cumulativeHours = {
+                left: cumulativeHours.left + rowHours,
+                right: cumulativeHours.right + rowHours,
+            };
+        } else if (typeof cumulativeHours === 'number') {
+            // For cars: simple addition
+            cumulativeHours += rowHours;
+        }
+
         cumulativeFuel += (it.fuel || 0) - rowConsumed;
+        cumulativeReceivedFuel += it.fuel || 0;
 
         return {
             ...it,
             rowHours,
             rowConsumed,
-            cumulativeHours,
+            cumulativeHours: typeof cumulativeHours === 'object'
+                ? { ...cumulativeHours }
+                : cumulativeHours,
             cumulativeFuel: Math.round(cumulativeFuel * 100) / 100,
         };
     });
@@ -49,8 +65,11 @@ export function calculateRoadList(
         itineraries: enhancedItineraries,
         hours: totalHours,
         fuel: totalFuel,
-        cumulativeHours,
+        cumulativeHours: typeof cumulativeHours === 'object'
+            ? { ...cumulativeHours }
+            : cumulativeHours,
         cumulativeFuel: Math.round(cumulativeFuel * 100) / 100,
+        cumulativeReceivedFuel
     };
 }
 

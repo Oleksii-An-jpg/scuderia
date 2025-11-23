@@ -1,5 +1,5 @@
 'use client';
-import {FC, useMemo, useState} from 'react';
+import {FC, useCallback, useEffect, useMemo, useState} from 'react';
 import {
     Card,
     VStack,
@@ -10,10 +10,12 @@ import {
     CloseButton
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
-import { Vehicle, getModes } from '@/types/vehicle';
+import {Vehicle, getModes, isBoat} from '@/types/vehicle';
 import {Itinerary, RoadList} from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
+import { onSnapshot, collection } from "firebase/firestore";
+import {db} from "@/lib/firebase";
 
 const RoadLists: FC = () => {
     const loading = useStore(state => state.loading);
@@ -22,11 +24,44 @@ const RoadLists: FC = () => {
     const getByVehicle = useStore(state => state.getByVehicle);
     const getById = useStore(state => state.getById);
     const deleteRoadList = useStore(state => state.delete);
+    const fetchAll = useStore(state => state.fetchAll);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    useEffect(() => {
+        let isInitial = true;
+
+        const unsub = onSnapshot(collection(db, "road-lists"), (snap) => {
+            if (isInitial) {
+                isInitial = false;
+                return; // skip init log
+            }
+
+            if (!loading) {
+                fetchAll();
+            }
+        });
+
+        return () => unsub();
+    }, [loading]);
+
+    // const handleVisibility = useCallback(() => {
+    //     if (document.visibilityState === "hidden") {
+    //     } else if (document.visibilityState === "visible") {
+    //         fetchAll();
+    //     }
+    // }, []);
+    //
+    // useEffect(() => {
+    //     document.addEventListener("visibilitychange", handleVisibility);
+    //
+    //     return () => {
+    //         document.removeEventListener("visibilitychange", handleVisibility);
+    //     };
+    // }, []);
 
     const roadLists = getByVehicle(selectedVehicle);
 
@@ -47,15 +82,27 @@ const RoadLists: FC = () => {
         };
 
         modes.forEach(mode => {
+            // @ts-expect-error: dynamic keys
             newItinerary[mode] = null;
         });
+
+        // Determine initial startHours based on vehicle type
+        let initialStartHours;
+        if (lastRoadList) {
+            initialStartHours = lastRoadList.cumulativeHours;
+        } else {
+            // No previous roadlists, use default
+            initialStartHours = isBoat(selectedVehicle)
+                ? { left: 0, right: 0 }
+                : 0;
+        }
 
         return {
             vehicle: selectedVehicle,
             start: new Date(),
             end: new Date(),
             startFuel: lastRoadList?.cumulativeFuel ?? 0,
-            startHours: lastRoadList?.cumulativeHours ?? 0,
+            startHours: initialStartHours,
             itineraries: [newItinerary],
         };
     }, [editingId, roadLists, selectedVehicle, getById]);

@@ -1,7 +1,7 @@
 'use client';
 import { useRef, ReactNode } from 'react';
 import { useStore } from '@/lib/store';
-import {Itinerary, RoadList, SerializableRoadList} from '@/types/roadList';
+import {RoadList, SerializableRoadList} from '@/types/roadList';
 
 type Props = {
     initialRoadLists: SerializableRoadList[];
@@ -15,21 +15,10 @@ function deserializeRoadList(serializable: SerializableRoadList): RoadList {
         start: new Date(serializable.start),
         end: new Date(serializable.end),
         itineraries: serializable.itineraries.map(it => {
-            // Preserve all properties from the itinerary
-            const converted: Itinerary = {
-                br: it.br ? Number(it.br) : null,
-                fuel: it.fuel ? Number(it.fuel) : null,
-                comment: it.comment ? String(it.comment) : undefined,
+            return {
+                ...it,
                 date: new Date(it.date),
-            };
-            for (const key in it) {
-                if (key === 'date') {
-                    converted.date = new Date(it.date);
-                } else {
-                    converted[key] = it[key];
-                }
             }
-            return converted;
         }),
     };
 }

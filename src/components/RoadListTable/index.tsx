@@ -12,7 +12,7 @@ import {
     Skeleton,
     Table,
     Text,
-    VStack
+    VStack,
 } from '@chakra-ui/react';
 import {
     BiFirstPage,
@@ -32,7 +32,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { CalculatedRoadList } from '@/types/roadList';
-import { isBoat } from '@/types/vehicle';
+import {isBoat, isCar} from '@/types/vehicle';
 import { decimalToTimeString } from '@/lib/timeUtils';
 
 type Props = {
@@ -51,72 +51,172 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
     const columns = useMemo<ColumnDef<CalculatedRoadList>[]>(
         () => [
             {
-                accessorKey: 'id',
-                header: 'Період',
-                cell: info => {
-                    const model = info.row.original;
-                    return (
-                        <Badge colorPalette="blue" size="lg">
-                            <Text fontWeight="bold">
-                                {new Intl.DateTimeFormat('uk-UA', {
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    year: '2-digit'
-                                }).format(model.start)} — {new Intl.DateTimeFormat('uk-UA', {
+                header: 'Дорожній лист',
+                columns: [
+                    {
+                        accessorKey: 'id',
+                        header: 'Період',
+                        cell: info => {
+                            const model = info.row.original;
+                            return (
+                                <Badge colorPalette="blue" size="lg">
+                                    <Text fontWeight="bold">
+                                        {new Intl.DateTimeFormat('uk-UA', {
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            year: '2-digit'
+                                        }).format(model.start)} — {new Intl.DateTimeFormat('uk-UA', {
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        year: '2-digit'
+                                    }).format(model.end)}
+                                    </Text>
+                                </Badge>
+                            );
+                        },
+                        sortingFn: (rowA, rowB) => {
+                            return rowA.original.start.getTime() - rowB.original.start.getTime();
+                        }
+                    },
+                    {
+                        accessorKey: 'start',
+                        header: 'дата',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{new Intl.DateTimeFormat('uk-UA', {
                                 month: '2-digit',
                                 day: '2-digit',
                                 year: '2-digit'
-                            }).format(model.end)}
-                            </Text>
-                        </Badge>
-                    );
-                },
-                sortingFn: (rowA, rowB) => {
-                    return rowA.original.start.getTime() - rowB.original.start.getTime();
-                }
+                            }).format(model.start)}</Text>;
+                        },
+                        sortingFn: (rowA, rowB) => {
+                            return rowA.original.start.getTime() - rowB.original.start.getTime();
+                        }
+                    },
+                    {
+                        id: 'roadListID',
+                        header: '№ д/л',
+                        accessorKey: 'roadListID',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{model.roadListID}</Text>;
+                        },
+                    },
+                ],
             },
             {
-                header: 'Дорожній лист',
-                accessorKey: 'roadListID',
-                cell: info => {
-                    const model = info.row.original;
-                    return <Text fontWeight="bold">{model.roadListID}</Text>;
-                },
-            },
-            {
-                header: info => {
-                    const vehicle = info.table.getRowModel().rows[0]?.original.vehicle;
+                header: () => {
                     return (
                         <Text>
-                            {vehicle && (isBoat(vehicle) ? 'Загальна тривалість' : 'Загальний пробіг (км)')}
+                            Пройдено (відпрацьовано)
                         </Text>
                     );
                 },
+                enableSorting: false,
                 accessorKey: 'hours',
-                cell: info => {
-                    const model = info.row.original;
+                columns: [
+                    {
+                        header: 'км',
+                        cell: info => {
+                            const model = info.row.original;
+                            return (
+                                <Text fontWeight="bold">
+                                    {isCar(model.vehicle) ? Math.round(model.hours) : null}
+                                </Text>
+                            );
+                        },
+                    },
+                    {
+                        header: 'год.',
+                        cell: info => {
+                            const model = info.row.original;
+                            return (
+                                <Text fontWeight="bold">
+                                    {isBoat(model.vehicle) ? decimalToTimeString(model.hours, true) : null}
+                                </Text>
+                            );
+                        },
+                    },
+                ]
+            },
+            {
+                id: 'odometerOrHours',
+                header: (info) => {
+                    const vehicle = info.table.getRowModel().rows[0]?.original.vehicle;
                     return (
                         <Text fontWeight="bold">
-                            {isBoat(model.vehicle) ? decimalToTimeString(model.hours) : Math.round(model.hours)}
+                            {`${vehicle && (isBoat(vehicle) ? 'Напрацювання двигунів (год:хв)' : 'Одометр (км)')}`}
                         </Text>
                     );
                 },
+                columns: [
+                    {
+                        accessorKey: 'startHours',
+                        header: 'до',
+                        enableSorting: false,
+                        cell: info => {
+                            const model = info.row.original;
+                            return (
+                                <>{isBoat(model.vehicle) ? <HStack>
+                                    <Badge colorPalette="purple" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.left)}</Badge>
+                                    <Badge colorPalette="yellow" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.right)}</Badge>
+                                </HStack> : <Text fontWeight="bold">{typeof model.startHours === 'number' && Math.round(model.startHours)}</Text>}</>
+                            );
+                        }
+                    },
+                    {
+                        accessorKey: 'cumulativeHours',
+                        header: 'після',
+                        enableSorting: false,
+                        cell: info => {
+                            const model = info.row.original;
+                            return (
+                                <>{isBoat(model.vehicle) ? <HStack>
+                                    <Badge colorPalette="purple" fontWeight="bold">{typeof model.cumulativeHours === 'object' && decimalToTimeString(model.cumulativeHours.left)}</Badge>
+                                    <Badge colorPalette="yellow" fontWeight="bold">{typeof model.cumulativeHours === 'object' && decimalToTimeString(model.cumulativeHours.right)}</Badge>
+                                </HStack> : <Text fontWeight="bold">{typeof model.cumulativeHours === 'number' && Math.round(model.cumulativeHours)}</Text>}</>
+                            );
+                        }
+                    }
+                ]
             },
             {
-                header: 'Загальний розхід',
-                accessorKey: 'fuel',
-                cell: info => {
-                    const model = info.row.original;
-                    return <Text fontWeight="bold">{Math.round(model.fuel)}</Text>;
-                },
-            },
-            {
-                header: 'Залишок на кінець зміни',
-                accessorKey: 'cumulativeFuel',
-                cell: info => {
-                    const model = info.row.original;
-                    return <Text fontWeight="bold">{Math.round(model.cumulativeFuel)}</Text>;
-                }
+                id: 'fuelMovement',
+                header: () => <Text fontWeight="bold" textAlign="center">Рух пального</Text>,
+                columns: [
+                    {
+                        accessorKey: 'startFuel',
+                        header: 'до',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{Math.round(model.startFuel)}</Text>;
+                        },
+                    },
+                    {
+                        accessorKey: 'cumulativeReceivedFuel',
+                        header: 'отримано',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{Math.round(model.cumulativeReceivedFuel)}</Text>;
+                        }
+                    },
+                    {
+                        accessorKey: 'fuel',
+                        header: 'витрата',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{Math.round(model.fuel)}</Text>;
+                        }
+                    },
+                    {
+                        accessorKey: 'cumulativeFuel',
+                        header: 'після',
+                        cell: info => {
+                            const model = info.row.original;
+                            return <Text fontWeight="bold">{Math.round(model.cumulativeFuel)}</Text>;
+                        }
+                    }
+                ],
             },
             {
                 id: 'actions',
@@ -153,30 +253,32 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
         onPaginationChange: setPagination,
         state: { pagination },
         initialState: {
-            sorting: [{ id: 'id', desc: true }],
+            sorting: [{ id: 'start', desc: true }],
         },
     });
 
     return (
-        <Table.Root>
+        <Table.Root showColumnBorder variant="outline">
             <Table.Header>
                 {table.getHeaderGroups().map(headerGroup => (
                     <Table.Row key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                            <Table.ColumnHeader key={header.id} colSpan={header.colSpan}>
-                                <Heading
-                                    className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
-                                    onClick={header.column.getToggleSortingHandler()}
-                                    size="sm"
-                                >
-                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                    {{
-                                        asc: ' 🔼',
-                                        desc: ' 🔽',
-                                    }[header.column.getIsSorted() as string] ?? null}
-                                </Heading>
-                            </Table.ColumnHeader>
-                        ))}
+                        {headerGroup.headers.map(header => {
+                            return (
+                                <Table.ColumnHeader key={header.id} colSpan={header.colSpan}>
+                                    {header.isPlaceholder ? null : <Heading
+                                        className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
+                                        onClick={header.column.getToggleSortingHandler()}
+                                        size="sm"
+                                    >
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        {{
+                                            asc: ' 🔼',
+                                            desc: ' 🔽',
+                                        }[header.column.getIsSorted() as string] ?? null}
+                                    </Heading>}
+                                </Table.ColumnHeader>
+                            )
+                        })}
                     </Table.Row>
                 ))}
             </Table.Header>
@@ -225,7 +327,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
 
             <Table.Footer>
                 <Table.Row>
-                    <Table.Cell colSpan={columns.length}>
+                    <Table.Cell colSpan={table.getAllLeafColumns().length}>
                         <VStack align="stretch">
                             <HStack justifyContent="space-between">
                                 <HStack>

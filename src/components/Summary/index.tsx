@@ -19,6 +19,7 @@ const Summary: FC<Props> = ({ calculated, vehicle }) => {
 
         modes.forEach(mode => {
             totals[mode] = calculated.itineraries.reduce((sum, it) => {
+                // @ts-expect-error: dynamic key
                 return sum + ((it[mode] as number) || 0);
             }, 0);
         });

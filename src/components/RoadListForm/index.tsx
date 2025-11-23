@@ -77,6 +77,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
 
         // Add vehicle-specific fields
         modes.forEach(mode => {
+            // @ts-expect-error: dynamic keys
             newItinerary[mode] = null;
         });
 
@@ -84,7 +85,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     };
 
     // Calculate grid columns: 3 base + modes + 5 additional
-    const totalColumns = 3 + modes.length + 5;
+    const totalColumns = 3 + modes.length + 6;
 
     return (
         <FormProvider {...methods}>
@@ -117,8 +118,12 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                             <GridItem><Heading size="sm">Усього</Heading></GridItem>
                             <GridItem><Heading size="sm">Розхід</Heading></GridItem>
                             <GridItem><Heading size="sm">Залишок</Heading></GridItem>
-                            <GridItem><Heading size="sm">Л Мотор</Heading></GridItem>
-                            <GridItem><Heading size="sm">П Мотор</Heading></GridItem>
+                            {config.type === 'boat' && (
+                                <>
+                                    <GridItem><Heading size="sm">Л двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm">П двигун</Heading></GridItem>
+                                </>
+                            )}
                             <GridItem><Heading size="sm">Коментар</Heading></GridItem>
                         </Grid>
 

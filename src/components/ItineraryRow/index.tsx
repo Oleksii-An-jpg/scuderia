@@ -79,6 +79,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                 <GridItem key={mode}>
                     <Field.Root>
                         {isBoat(vehicle) ? (
+                            // @ts-expect-error: dynamic keys
                             <TimeInput name={`itineraries.${index}.${mode}`} control={control} />
                         ) : (
                             <Input
@@ -86,6 +87,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                                 type="number"
                                 step={0.1}
                                 size="2xs"
+                                // @ts-expect-error: dynamic keys
                                 {...register(`itineraries.${index}.${mode}`, { valueAsNumber: true })}
                             />
                         )}
@@ -117,22 +119,35 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                 </Text>
             </GridItem>
 
-            {/* L Motor */}
-            <GridItem alignSelf="center">
-                <Badge colorPalette="purple" size="lg">
-                    <Text fontWeight="bold">{Math.round(calculated.cumulativeHours * 10) / 10}</Text>
-                </Badge>
-            </GridItem>
+            {config.type === 'boat' && (
+                <>
+                    <GridItem alignSelf="center">
+                        <Badge colorPalette="purple" size="lg">
+                            <Text fontWeight="bold">
+                                {typeof calculated.cumulativeHours === 'object'
+                                    ? Math.round(calculated.cumulativeHours.left * 10) / 10
+                                    : Math.round(calculated.cumulativeHours * 10) / 10
+                                }
+                            </Text>
+                        </Badge>
+                    </GridItem>
 
-            {/* P Motor */}
-            <GridItem alignSelf="center">
-                <Badge colorPalette="purple" size="lg">
-                    <Text fontWeight="bold">{Math.round(calculated.cumulativeHours * 10) / 10}</Text>
-                </Badge>
-            </GridItem>
+                    {/* P Motor */}
+                    <GridItem alignSelf="center">
+                        <Badge colorPalette="purple" size="lg">
+                            <Text fontWeight="bold">
+                                {typeof calculated.cumulativeHours === 'object'
+                                    ? Math.round(calculated.cumulativeHours.right * 10) / 10
+                                    : Math.round(calculated.cumulativeHours * 10) / 10
+                                }
+                            </Text>
+                        </Badge>
+                    </GridItem>
+                </>
+            )}
 
             {/* Comment & Delete */}
-            <GridItem>
+            <GridItem colSpan={config.type === 'boat' ? 1 : 3}>
                 <HStack>
                     <Field.Root>
                         <Textarea

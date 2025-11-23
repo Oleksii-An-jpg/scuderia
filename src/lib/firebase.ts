@@ -1,3 +1,4 @@
+'use client';
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore,
@@ -10,10 +11,10 @@ import {
     DocumentData,
     QueryDocumentSnapshot,
     FirestoreDataConverter,
-    Timestamp,
 } from 'firebase/firestore';
-import {RoadList, FirestoreRoadList, Itinerary} from '@/types/roadList';
+import {RoadList, FirestoreRoadList, EngineHours} from '@/types/roadList';
 import { Vehicle } from '@/types/vehicle';
+import {firestoreToRoadList, roadListToFirestore} from "@/lib/converter";
 
 const app = initializeApp({
     projectId: 'cookbook-460911',
@@ -22,61 +23,14 @@ const app = initializeApp({
 
 export const db = getFirestore(app);
 
-// Helper to convert Firestore timestamp to Date
-function toDate(value: Timestamp | Date | { toDate(): Date }): Date {
-    if (value instanceof Timestamp) {
-        return value.toDate();
-    }
-    if (value instanceof Date) {
-        return value;
-    }
-    if (typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
-        return value.toDate();
-    }
-    return value as unknown as Date;
-}
-
 // Firestore converter
-const roadListConverter: FirestoreDataConverter<RoadList> = {
+export const roadListConverter: FirestoreDataConverter<RoadList> = {
     toFirestore(roadList: RoadList): DocumentData {
-        return {
-            ...roadList,
-            start: Timestamp.fromDate(roadList.start),
-            end: Timestamp.fromDate(roadList.end),
-            itineraries: roadList.itineraries.map(it => ({
-                ...it,
-                date: Timestamp.fromDate(it.date),
-            })),
-        };
+        return roadListToFirestore(roadList);
     },
-    fromFirestore(snapshot: QueryDocumentSnapshot): RoadList {
-        const data = snapshot.data() as FirestoreRoadList;
-        return {
-            vehicle: data.vehicle,
-            roadListID: data.roadListID,
-            startFuel: data.startFuel,
-            startHours: data.startHours,
-            id: snapshot.id,
-            start: toDate(data.start),
-            end: toDate(data.end),
-            itineraries: data.itineraries.map(it => {
-                // Preserve all properties from the itinerary
-                const converted: Itinerary = {
-                    br: it.br ? Number(it.br) : null,
-                    fuel: it.fuel ? Number(it.fuel) : null,
-                    comment: it.comment ? String(it.comment) : undefined,
-                    date: toDate(it.date),
-                };
-                for (const key in it) {
-                    if (key === 'date') {
-                        converted.date = toDate(it.date);
-                    } else {
-                        converted[key] = it[key];
-                    }
-                }
-                return converted;
-            }),
-        };
+    fromFirestore(snapshot: QueryDocumentSnapshot<FirestoreRoadList>): RoadList {
+        const data = snapshot.data();
+        return firestoreToRoadList(data, snapshot.id);
     },
 };
 
@@ -163,8 +117,8 @@ export async function deleteRoadList(
     for (let i = deletedIndex + 1; i < vehicleRoadLists.length; i++) {
         const current = vehicleRoadLists[i];
 
-        let startHours: number;
-        let startFuel: number;
+        let startHours: EngineHours | number;
+        let startFuel: EngineHours | number;
 
         if (deletedIndex > 0) {
             const { calculateRoadList } = await import('./calculations');

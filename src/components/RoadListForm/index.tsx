@@ -33,15 +33,26 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     });
 
     // Watch form values
-    const formValues = watch();
+    const itineraries = watch('itineraries');
+    const startFuel = watch('startFuel');
+    const startHours = watch('startHours');
+    const itinerariesKey = JSON.stringify(itineraries);
 
-    // Debounce calculations (100ms delay)
-    const debouncedValues = useDebouncedValue(formValues, 100);
+    // Create stable object with useMemo
+    const calculationInput = useMemo(() => ({
+        ...roadList,
+        itineraries,
+        startFuel,
+        startHours,
+    }), [itinerariesKey, startFuel, startHours, roadList]);
+
+    // Now debounce the STABLE input
+    const debouncedInput = useDebouncedValue(calculationInput, 200);
 
     // Calculate with debounced values
     const calculated = useMemo(() => {
-        return calculateRoadList(debouncedValues);
-    }, [debouncedValues]);
+        return calculateRoadList(debouncedInput);
+    }, [debouncedInput]);
 
     useEffect(() => {
         reset(roadList);

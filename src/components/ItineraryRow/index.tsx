@@ -13,7 +13,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 type Props = {
     index: number;
     vehicle: Vehicle;
-    calculated: CalculatedItinerary;
+    calculated?: CalculatedItinerary;
     onRemove: () => void;
     isLast: boolean;
 }
@@ -25,6 +25,11 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
 
     // Calculate column span: 3 (date, br, fuel) + modes.length + 6 (total, consumed, cumFuel, L motor, P motor, comment)
     const totalColumns = 3 + modes.length + 6;
+
+    const rowHours = calculated?.rowHours ?? 0;
+    const rowConsumed = calculated?.rowConsumed ?? 0;
+    const cumulativeFuel = calculated?.cumulativeFuel ?? 0;
+    const cumulativeHours = calculated?.cumulativeHours ?? (isBoat(vehicle) ? { left: 0, right: 0 } : 0);
 
     return (
         <Grid templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
@@ -97,25 +102,25 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
 
             {/* Total (rowHours) */}
             <GridItem>
-                <Field.Root invalid={isBoat(vehicle) && calculated.rowHours != null && Math.round(calculated.rowHours * 60) % 6 !== 0}>
+                <Field.Root invalid={isBoat(vehicle) && rowHours != null && Math.round(rowHours * 60) % 6 !== 0}>
                     <Input
                         disabled
                         size="2xs"
                         variant="subtle"
-                        value={isBoat(vehicle) ? decimalToTimeString(calculated.rowHours) : Math.round(calculated.rowHours)}
+                        value={isBoat(vehicle) ? decimalToTimeString(rowHours) : Math.round(rowHours)}
                     />
                 </Field.Root>
             </GridItem>
 
             {/* Consumed */}
             <GridItem alignSelf="center">
-                <Text textStyle="sm">{Math.round(calculated.rowConsumed)}</Text>
+                <Text textStyle="sm">{Math.round(rowConsumed)}</Text>
             </GridItem>
 
             {/* Cumulative Fuel */}
             <GridItem alignSelf="center">
                 <Text textStyle="sm" {...(isLast && { fontWeight: 'bold' })}>
-                    {Math.round(calculated.cumulativeFuel)}
+                    {Math.round(cumulativeFuel)}
                 </Text>
             </GridItem>
 
@@ -124,9 +129,9 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                     <GridItem alignSelf="center">
                         <Badge colorPalette="purple" size="lg">
                             <Text fontWeight="bold">
-                                {typeof calculated.cumulativeHours === 'object'
-                                    ? Math.round(calculated.cumulativeHours.left * 10) / 10
-                                    : Math.round(calculated.cumulativeHours * 10) / 10
+                                {typeof cumulativeHours === 'object'
+                                    ? Math.round(cumulativeHours.left * 10) / 10
+                                    : Math.round(cumulativeHours * 10) / 10
                                 }
                             </Text>
                         </Badge>
@@ -136,9 +141,9 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                     <GridItem alignSelf="center">
                         <Badge colorPalette="purple" size="lg">
                             <Text fontWeight="bold">
-                                {typeof calculated.cumulativeHours === 'object'
-                                    ? Math.round(calculated.cumulativeHours.right * 10) / 10
-                                    : Math.round(calculated.cumulativeHours * 10) / 10
+                                {typeof cumulativeHours === 'object'
+                                    ? Math.round(cumulativeHours.right * 10) / 10
+                                    : Math.round(cumulativeHours * 10) / 10
                                 }
                             </Text>
                         </Badge>

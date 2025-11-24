@@ -23,8 +23,8 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
     const config = VEHICLE_CONFIG[vehicle];
     const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
 
-    // Calculate column span: 3 (date, br, fuel) + modes.length + 6 (total, consumed, cumFuel, L motor, P motor, comment)
-    const totalColumns = 3 + modes.length + 6;
+    // Calculate column span: 3 (date, br, fuel) + modes.length + 7 (total, consumed, cumFuel, L motor, P motor, comment)
+    const totalColumns = 3 + modes.length + 7;
 
     const rowHours = calculated?.rowHours ?? 0;
     const rowConsumed = calculated?.rowConsumed ?? 0;
@@ -124,7 +124,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                 </Text>
             </GridItem>
 
-            {config.type === 'boat' && (
+            {config.type === 'boat' ? (
                 <>
                     <GridItem alignSelf="center">
                         <Badge colorPalette="purple" size="lg">
@@ -149,7 +149,18 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                         </Badge>
                     </GridItem>
                 </>
-            )}
+            ) : <GridItem>
+                <GridItem alignSelf="center">
+                    <Badge colorPalette="purple" size="lg">
+                        <Text fontWeight="bold">
+                            {typeof cumulativeHours === 'object'
+                                ? Math.round(cumulativeHours.right * 10) / 10
+                                : Math.round(cumulativeHours * 10) / 10
+                            }
+                        </Text>
+                    </Badge>
+                </GridItem>
+            </GridItem>}
 
             {/* Comment & Delete */}
             <GridItem colSpan={config.type === 'boat' ? 1 : 3}>

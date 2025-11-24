@@ -187,6 +187,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     {
                         accessorKey: 'startFuel',
                         header: 'до',
+                        enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
                             return <Text fontWeight="bold">{Math.round(model.startFuel)}</Text>;
@@ -195,6 +196,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     {
                         accessorKey: 'cumulativeReceivedFuel',
                         header: 'отримано',
+                        enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
                             return <Text fontWeight="bold">{Math.round(model.cumulativeReceivedFuel)}</Text>;
@@ -203,6 +205,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     {
                         accessorKey: 'fuel',
                         header: 'витрата',
+                        enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
                             return <Text fontWeight="bold">{Math.round(model.fuel)}</Text>;
@@ -211,6 +214,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     {
                         accessorKey: 'cumulativeFuel',
                         header: 'після',
+                        enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
                             return <Text fontWeight="bold">{Math.round(model.cumulativeFuel)}</Text>;

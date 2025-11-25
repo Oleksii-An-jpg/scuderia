@@ -63,13 +63,17 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         const minDate = Math.min(...dates);
         const maxDate = Math.max(...dates);
 
-        await upsert({
-            ...data,
-            start: new Date(minDate),
-            end: new Date(maxDate),
-        });
+        try {
+            await upsert({
+                ...data,
+                start: new Date(minDate),
+                end: new Date(maxDate),
+            });
 
-        onClose();
+            onClose();
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const handleAppend = () => {
@@ -96,7 +100,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     };
 
     // Calculate grid columns: 3 base + modes + 7 additional
-    const totalColumns = 3 + modes.length + 7;
+    const totalColumns = 3 + modes.length + 8;
 
     return (
         <FormProvider {...methods}>
@@ -111,7 +115,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </HStack>
 
                     <Grid
-                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, 5.5em) repeat(5, 5em) auto`}
+                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, 5.5em) repeat(5, 5em) auto auto`}
                         gap={2}
                     >
                         {/* Column Headers */}
@@ -135,6 +139,9 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                                     <GridItem><Heading size="sm">П двигун</Heading></GridItem>
                                 </>
                             ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
+                            <GridItem>
+                                <Heading size="sm">Файли</Heading>
+                            </GridItem>
                             <GridItem><Heading size="sm">Коментар</Heading></GridItem>
                         </Grid>
 

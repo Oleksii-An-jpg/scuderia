@@ -15,6 +15,7 @@ import {
 import {RoadList, FirestoreRoadList, EngineHours} from '@/types/roadList';
 import { Vehicle } from '@/types/vehicle';
 import {firestoreToRoadList, roadListToFirestore} from "@/lib/converter";
+import {uploadDocToBucket} from "@/lib/storage";
 
 const app = initializeApp({
     projectId: 'cookbook-460911',
@@ -43,11 +44,24 @@ export async function getAllRoadLists(): Promise<RoadList[]> {
 }
 
 export async function upsertRoadList(
-    roadList: RoadList,
+    rl: RoadList,
     vehicle: Vehicle,
     allRoadLists: RoadList[]
 ): Promise<void> {
     const batch = writeBatch(db);
+    const roadList = {
+        ...rl,
+        itineraries: rl.itineraries.map(it => ({
+            ...it,
+            docs: it.docs?.map(doc => {
+                if (typeof doc === 'string') {
+                    return doc;
+                }
+
+                return doc.name
+            })
+        }))
+    }
 
     // Find all roadlists for this vehicle, sorted by date
     const vehicleRoadLists = allRoadLists
@@ -90,7 +104,12 @@ export async function upsertRoadList(
         batch.set(newDocRef, { ...roadList, id: newDocRef.id });
     }
 
-    await batch.commit();
+    try {
+        await batch.commit();
+        await Promise.all(rl.itineraries.map(it => it.docs?.filter(doc => doc instanceof File)).flat().filter(doc => !!doc).map(uploadDocToBucket))
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 export async function deleteRoadList(

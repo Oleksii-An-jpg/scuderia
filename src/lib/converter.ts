@@ -36,6 +36,7 @@ export function roadListToFirestore(roadList: RoadList) {
         itineraries: roadList.itineraries.map(it => ({
             ...it,
             date: Timestamp.fromDate(it.date),
+            docs: it.docs ? it.docs : [],
         })),
     };
 }

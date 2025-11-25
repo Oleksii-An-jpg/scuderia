@@ -6,6 +6,7 @@ export type Itinerary = {
     br: number | null;
     fuel: number | null;
     comment?: string;
+    docs?: (string | File)[];
     // Dynamic fields for speed modes or terrain types
     // [key: string]: number | null | Date | string | undefined;
 }
@@ -58,6 +59,7 @@ export type CalculatedRoadList = RoadList & {
 // Firestore converter types
 export type FirestoreItinerary = Omit<Itinerary, 'date'> & {
     date: Timestamp;
+    docs?: string[];
 }
 
 export type FirestoreRoadList = Omit<RoadList, 'start' | 'end' | 'itineraries'> & {

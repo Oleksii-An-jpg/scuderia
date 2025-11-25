@@ -22,6 +22,7 @@ import { Vehicle, VEHICLE_CONFIG, isBoat } from '@/types/vehicle';
 import { decimalToTimeString } from '@/lib/timeUtils';
 import TimeInput from '@/components/TimeInput';
 import 'react-datepicker/dist/react-datepicker.css';
+import Link from "next/link";
 
 type Props = {
     index: number;
@@ -46,7 +47,9 @@ const FileUploadList = () => {
                         file={file}
                         key={file.name}
                     >
-                        <Text fontSize="xs">{file.name}</Text>
+                        <Link prefetch={false} target="_blank" href={`https://storage.googleapis.com/scuderia-docs/${file.name}`}>
+                            <Text fontSize="xs">{file.name}</Text>
+                        </Link>
                         <FileUpload.ItemDeleteTrigger alignSelf="center" boxSize="4" layerStyle="fill.solid">
                             <BiX />
                         </FileUpload.ItemDeleteTrigger>

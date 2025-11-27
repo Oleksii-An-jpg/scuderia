@@ -1,7 +1,9 @@
-'use server';
 import { getAllRoadListsServer } from '@/lib/firebaseAdmin';
 import StoreProvider from '@/components/StoreProvider';
 import RoadLists from '@/components/RoadLists';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function Page() {
     const initialRoadLists = await getAllRoadListsServer();

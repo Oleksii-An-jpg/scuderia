@@ -1,5 +1,5 @@
 'use client';
-import {FC, useEffect, useMemo, useState} from 'react';
+import {FC, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Card,
     VStack,
@@ -31,16 +31,23 @@ const RoadLists: FC = () => {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
+    const loadingRef = useRef(loading);
+
+    useEffect(() => {
+        loadingRef.current = loading;
+    }, [loading]);
+
     useEffect(() => {
         let isInitial = true;
 
-        const unsub = onSnapshot(collection(db, "road-lists"), (snap) => {
+        const unsub = onSnapshot(collection(db, "road-lists"), snap => {
             if (isInitial) {
                 isInitial = false;
-                return; // skip init log
+                return;
             }
 
-            if (!loading) {
+            // read latest loading value without re-subscribing
+            if (!loadingRef.current) {
                 fetchAll();
             }
         });

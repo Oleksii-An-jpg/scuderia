@@ -1,5 +1,5 @@
 'use client';
-import {FC, useCallback, useEffect, useMemo, useState} from 'react';
+import {FC, useEffect, useMemo, useState} from 'react';
 import {
     Card,
     VStack,

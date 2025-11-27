@@ -12,7 +12,6 @@ import {
     Text,
     Textarea,
     FileUpload,
-    Button,
     useFileUploadContext,
 } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
@@ -82,7 +81,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
     const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
 
     // Calculate column span: 3 (date, br, fuel) + modes.length + 7 (total, consumed, cumFuel, L motor, P motor, comment, files)
-    const totalColumns = 3 + modes.length + 8;
+    const totalColumns = 3 + modes.length + (isBoat(vehicle) ? 7 : 6);
 
     const rowHours = calculated?.rowHours ?? 0;
     const rowConsumed = calculated?.rowConsumed ?? 0;
@@ -226,9 +225,9 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                 <GridItem>
                     <FileUpload.HiddenInput />
                     <FileUpload.Trigger asChild>
-                        <Button variant="outline" size="xs">
-                            <BiUpload /> Додати
-                        </Button>
+                        <IconButton variant="outline" size="xs">
+                            <BiUpload />
+                        </IconButton>
                     </FileUpload.Trigger>
                 </GridItem>
                 <GridItem gridColumn="inherit" order={totalColumns + 1}>
@@ -236,7 +235,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                 </GridItem>
 
                 {/* Comment & Delete */}
-                <GridItem colSpan={config.type === 'boat' ? 1 : 3}>
+                <GridItem>
                     <HStack>
                         <Field.Root>
                             <Textarea

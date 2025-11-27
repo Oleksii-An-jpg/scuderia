@@ -4,7 +4,7 @@ import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { Button, Grid, GridItem, Heading, HStack, Separator, Text, VStack } from '@chakra-ui/react';
 import { BiPlus } from 'react-icons/bi';
 import {Itinerary, RoadList} from '@/types/roadList';
-import { VEHICLE_CONFIG, getModes } from '@/types/vehicle';
+import {VEHICLE_CONFIG, getModes, isBoat} from '@/types/vehicle';
 import { calculateRoadList } from '@/lib/calculations';
 import { useStore } from '@/lib/store';
 import RoadListHeader from '@/components/RoadListHeader';
@@ -100,7 +100,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     };
 
     // Calculate grid columns: 3 base + modes + 7 additional
-    const totalColumns = 3 + modes.length + 8;
+    const totalColumns = 3 + modes.length + (isBoat(roadList.vehicle) ? 7 : 6);
 
     return (
         <FormProvider {...methods}>
@@ -115,7 +115,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </HStack>
 
                     <Grid
-                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, 5.5em) repeat(5, 5em) auto auto`}
+                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, ${isBoat(roadList.vehicle) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(roadList.vehicle) ? 'min-content min-content auto' : 'min-content auto'}`}
                         gap={2}
                     >
                         {/* Column Headers */}

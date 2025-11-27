@@ -158,8 +158,8 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                             const model = info.row.original;
                             return (
                                 <>{isBoat(model.vehicle) ? <HStack>
-                                    <Badge colorPalette="purple" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.left)}</Badge>
-                                    <Badge colorPalette="yellow" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.right)}</Badge>
+                                    <Badge className="!select-text" colorPalette="purple" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.left)}</Badge>
+                                    <Badge className="!select-text" colorPalette="yellow" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.right)}</Badge>
                                 </HStack> : <Text fontWeight="bold">{typeof model.startHours === 'number' && Math.round(model.startHours)}</Text>}</>
                             );
                         }

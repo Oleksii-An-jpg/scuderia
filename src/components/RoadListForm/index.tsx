@@ -1,0 +1,175 @@
+'use client';
+import { FC, useEffect, useMemo } from 'react';
+import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
+import { Button, Grid, GridItem, Heading, HStack, Separator, Text, VStack } from '@chakra-ui/react';
+import { BiPlus } from 'react-icons/bi';
+import {Itinerary, RoadList} from '@/types/roadList';
+import {VEHICLE_CONFIG, getModes, isBoat} from '@/types/vehicle';
+import { calculateRoadList } from '@/lib/calculations';
+import { useStore } from '@/lib/store';
+import RoadListHeader from '@/components/RoadListHeader';
+import ItineraryRow from '@/components/ItineraryRow';
+import Summary from '@/components/Summary';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+
+type Props = {
+    roadList: RoadList;
+    onClose: () => void;
+}
+
+const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
+    const upsert = useStore(state => state.upsert);
+    const config = VEHICLE_CONFIG[roadList.vehicle];
+    const modes = getModes(roadList.vehicle);
+
+    const methods = useForm<RoadList>({
+        defaultValues: roadList,
+    });
+
+    const { control, handleSubmit, reset, watch } = methods;
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: 'itineraries'
+    });
+
+    // Watch form values
+    const itineraries = watch('itineraries');
+    const startFuel = watch('startFuel');
+    const startHours = watch('startHours');
+    const itinerariesKey = JSON.stringify(itineraries);
+
+    // Create stable object with useMemo
+    const calculationInput = useMemo(() => ({
+        ...roadList,
+        itineraries,
+        startFuel,
+        startHours,
+    }), [itinerariesKey, startFuel, startHours, roadList]);
+
+    // Now debounce the STABLE input
+    const debouncedInput = useDebouncedValue(calculationInput, 200);
+
+    // Calculate with debounced values
+    const calculated = useMemo(() => {
+        return calculateRoadList(debouncedInput);
+    }, [debouncedInput]);
+
+    useEffect(() => {
+        reset(roadList);
+    }, [roadList.id, reset]);
+
+    const onSubmit = async (data: RoadList) => {
+        const dates = data.itineraries.map(it => it.date.getTime());
+        const minDate = Math.min(...dates);
+        const maxDate = Math.max(...dates);
+
+        try {
+            await upsert({
+                ...data,
+                start: new Date(minDate),
+                end: new Date(maxDate),
+            });
+
+            onClose();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleAppend = () => {
+        const lastDate = fields.length > 0
+            ? new Date(fields[fields.length - 1].date)
+            : new Date();
+
+        lastDate.setDate(lastDate.getDate() + 1);
+
+        const newItinerary: Itinerary = {
+            date: lastDate,
+            br: null,
+            fuel: null,
+            comment: '',
+        };
+
+        // Add vehicle-specific fields
+        modes.forEach(mode => {
+            // @ts-expect-error: dynamic keys
+            newItinerary[mode] = null;
+        });
+
+        append(newItinerary);
+    };
+
+    // Calculate grid columns: 3 base + modes + 7 additional
+    const totalColumns = 3 + modes.length + (isBoat(roadList.vehicle) ? 7 : 6);
+
+    return (
+        <FormProvider {...methods}>
+            <form id="upsert" onSubmit={handleSubmit(onSubmit)}>
+                <VStack alignItems="stretch" gap={4}>
+                    <RoadListHeader vehicle={roadList.vehicle} />
+
+                    <HStack>
+                        <Separator flex="1" />
+                        <Text flexShrink="0" textStyle="md" fontWeight="bold">Записи</Text>
+                        <Separator flex="1" />
+                    </HStack>
+
+                    <Grid
+                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, ${isBoat(roadList.vehicle) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(roadList.vehicle) ? 'min-content min-content auto' : 'min-content auto'}`}
+                        gap={2}
+                    >
+                        {/* Column Headers */}
+                        <Grid templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
+                            <GridItem><Heading size="sm">Дата</Heading></GridItem>
+                            <GridItem><Heading size="sm">БР</Heading></GridItem>
+                            <GridItem><Heading size="sm">Бункеровка</Heading></GridItem>
+
+                            {modes.map(mode => (
+                                <GridItem key={mode}>
+                                    <Heading size="sm">{config.labels[mode]}</Heading>
+                                </GridItem>
+                            ))}
+
+                            <GridItem><Heading size="sm">Усього</Heading></GridItem>
+                            <GridItem><Heading size="sm">Розхід</Heading></GridItem>
+                            <GridItem><Heading size="sm">Залишок</Heading></GridItem>
+                            {config.type === 'boat' ? (
+                                <>
+                                    <GridItem><Heading size="sm">Л двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm">П двигун</Heading></GridItem>
+                                </>
+                            ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
+                            <GridItem>
+                                <Heading size="sm">Файли</Heading>
+                            </GridItem>
+                            <GridItem><Heading size="sm">Коментар</Heading></GridItem>
+                        </Grid>
+
+                        {/* Itinerary Rows */}
+                        {fields.map((field, index) => (
+                            <ItineraryRow
+                                key={field.id}
+                                index={index}
+                                vehicle={roadList.vehicle}
+                                calculated={calculated.itineraries[index]}
+                                onRemove={() => remove(index)}
+                                isLast={index === fields.length - 1}
+                            />
+                        ))}
+
+                        {/* Summary Row */}
+                        <Summary calculated={calculated} vehicle={roadList.vehicle} />
+                    </Grid>
+
+                    <HStack>
+                        <Button colorPalette="blue" size="xs" onClick={handleAppend}>
+                            <BiPlus /> Додати запис
+                        </Button>
+                    </HStack>
+                </VStack>
+            </form>
+        </FormProvider>
+    );
+};
+
+export default RoadListForm;

@@ -6,6 +6,7 @@ import { VehicleConfig } from '@/types/vehicle';
 type VehicleStoreState = {
     vehicles: VehicleConfig[];
     activeVehicles: VehicleConfig[]; // Cached active vehicles
+    initialized: boolean; // Track if store has been hydrated
 }
 
 type VehicleStoreActions = {
@@ -20,9 +21,10 @@ export const selectVehicleById = (state: VehicleStoreState, id: string) => {
 export const useVehicleStore = create<VehicleStoreState & VehicleStoreActions>((set) => ({
     vehicles: [],
     activeVehicles: [],
+    initialized: false,
 
     hydrate: (vehicles: VehicleConfig[]) => {
         const activeVehicles = vehicles.filter(v => v.active);
-        set({ vehicles, activeVehicles });
+        set({ vehicles, activeVehicles, initialized: true });
     },
 }));

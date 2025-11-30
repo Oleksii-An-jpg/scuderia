@@ -9,7 +9,8 @@ import {
     Dialog,
     Portal,
     Button,
-    CloseButton
+    CloseButton,
+    Text
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -142,12 +143,13 @@ const RoadLists: FC = () => {
     };
 
     const pathname = usePathname();
+    const vehiclesInitialized = useVehicleStore(state => state.initialized);
 
-    if (vehicles.length === 0) {
+    if (vehiclesInitialized && vehicles.length === 0) {
         return (
             <Card.Root>
                 <Card.Body>
-                    <p>No vehicles configured. Please add vehicles first.</p>
+                    <Text>Транспортні засоби відсутні, або не налаштовані. Будь ласка, додайте з адмінки.</Text>
                 </Card.Body>
             </Card.Root>
         );

@@ -8,7 +8,14 @@ import RoadLists from '@/components/RoadLists';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function Page() {
+export default async function Page({
+                                       searchParams,
+                                   }: {
+    searchParams: Promise<{
+        vehicle?: string;
+    }>
+}) {
+    const vehicle = (await searchParams).vehicle;
     const [initialRoadLists, initialVehicles] = await Promise.all([
         getAllRoadListsServer(),
         getAllVehiclesServer(),
@@ -16,7 +23,7 @@ export default async function Page() {
 
     return (
         <VehicleStoreProvider initialVehicles={initialVehicles}>
-            <StoreProvider initialRoadLists={initialRoadLists}>
+            <StoreProvider initialRoadLists={initialRoadLists} vehicle={vehicle}>
                 <RoadLists />
             </StoreProvider>
         </VehicleStoreProvider>

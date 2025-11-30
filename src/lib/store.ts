@@ -17,7 +17,7 @@ type StoreState = {
 
 type StoreActions = {
     fetchAll: () => Promise<void>;
-    hydrate: (roadLists: RoadList[]) => void;
+    hydrate: (roadLists: RoadList[], vehicle?: string) => void;
     upsert: (roadList: RoadList) => Promise<void>;
     delete: (id: string, vehicle: Vehicle) => Promise<void>;
     setSelectedVehicle: (vehicle: Vehicle) => void;
@@ -61,12 +61,12 @@ export const useStore = create<StoreState & StoreActions>((set, get) => ({
         }
     },
 
-    hydrate: (roadLists: RoadList[]) => {
+    hydrate: (roadLists: RoadList[], vehicle) => {
         const vehicleConfigs = useVehicleStore.getState().vehicles;
         const calculatedCache = calculateAllCaches(roadLists, vehicleConfigs);
 
         // Set first available vehicle as selected if none selected
-        const selectedVehicle = get().selectedVehicle || vehicleConfigs[0]?.id || null;
+        const selectedVehicle = get().selectedVehicle || vehicle || vehicleConfigs[0]?.id || null;
 
         set({ roadLists, calculatedCache, selectedVehicle });
     },

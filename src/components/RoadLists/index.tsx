@@ -13,12 +13,13 @@ import {
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
-import { Vehicle, getModes, isBoat } from '@/types/vehicle';
+import { getModes, isBoat } from '@/types/vehicle';
 import { Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
 import { onSnapshot, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {usePathname} from "next/navigation";
 
 const RoadLists: FC = () => {
     const loading = useStore(state => state.loading);
@@ -140,6 +141,8 @@ const RoadLists: FC = () => {
         }
     };
 
+    const pathname = usePathname();
+
     if (vehicles.length === 0) {
         return (
             <Card.Root>
@@ -157,7 +160,12 @@ const RoadLists: FC = () => {
                 <Card.Body>
                     <Tabs.Root
                         value={selectedVehicle || undefined}
-                        onValueChange={(e) => setSelectedVehicle(e.value as Vehicle)}
+                        onValueChange={(e) => {
+                            const params = new URLSearchParams();
+                            setSelectedVehicle(e.value);
+                            params.set('vehicle', e.value);
+                            window.history.replaceState({}, '', `${pathname}?${params.toString()}`)
+                        }}
                     >
                         <Tabs.List>
                             {vehicles.map(vehicle => (

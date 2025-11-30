@@ -1,8 +1,11 @@
+// src/components/Summary/index.tsx
+
 'use client';
 import { FC, memo, useMemo } from 'react';
 import { GridItem, Heading } from '@chakra-ui/react';
 import { CalculatedRoadList } from '@/types/roadList';
-import { Vehicle, VEHICLE_CONFIG, isBoat } from '@/types/vehicle';
+import { Vehicle, getModes, isBoat } from '@/types/vehicle';
+import {selectVehicleById, useVehicleStore} from '@/lib/vehicleStore';
 import { decimalToTimeString } from '@/lib/timeUtils';
 
 type Props = {
@@ -11,16 +14,18 @@ type Props = {
 }
 
 const Summary: FC<Props> = ({ calculated, vehicle }) => {
-    const config = VEHICLE_CONFIG[vehicle];
-    const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
+    const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
+    if (!vehicleConfig) return null;
+
+    const modes = getModes(vehicleConfig);
 
     const modeTotals = useMemo(() => {
         const totals: Record<string, number> = {};
 
         modes.forEach(mode => {
-            totals[mode] = calculated.itineraries.reduce((sum, it) => {
+            totals[mode.id] = calculated.itineraries.reduce((sum, it) => {
                 // @ts-expect-error: dynamic key
-                return sum + ((it[mode] as number) || 0);
+                return sum + ((it[mode.id] as number) || 0);
             }, 0);
         });
 
@@ -36,11 +41,11 @@ const Summary: FC<Props> = ({ calculated, vehicle }) => {
 
             {/* Mode totals */}
             {modes.map(mode => (
-                <GridItem key={mode}>
+                <GridItem key={mode.id}>
                     <Heading textStyle="sm">
-                        {isBoat(vehicle)
-                            ? decimalToTimeString(modeTotals[mode])
-                            : Math.round(modeTotals[mode])
+                        {isBoat(vehicleConfig)
+                            ? decimalToTimeString(modeTotals[mode.id])
+                            : Math.round(modeTotals[mode.id])
                         }
                     </Heading>
                 </GridItem>
@@ -49,7 +54,7 @@ const Summary: FC<Props> = ({ calculated, vehicle }) => {
             {/* Total hours/km */}
             <GridItem>
                 <Heading textStyle="sm">
-                    {isBoat(vehicle)
+                    {isBoat(vehicleConfig)
                         ? decimalToTimeString(calculated.hours)
                         : Math.round(calculated.hours)
                     }

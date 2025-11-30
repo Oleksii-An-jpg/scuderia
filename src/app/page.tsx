@@ -1,16 +1,24 @@
-import { getAllRoadListsServer } from '@/lib/firebaseAdmin';
+// src/app/page.tsx
+
+import { getAllRoadListsServer, getAllVehiclesServer } from '@/lib/firebaseAdmin';
 import StoreProvider from '@/components/StoreProvider';
+import VehicleStoreProvider from '@/components/VehicleStoreProvider';
 import RoadLists from '@/components/RoadLists';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function Page() {
-    const initialRoadLists = await getAllRoadListsServer();
+    const [initialRoadLists, initialVehicles] = await Promise.all([
+        getAllRoadListsServer(),
+        getAllVehiclesServer(),
+    ]);
 
     return (
-        <StoreProvider initialRoadLists={initialRoadLists}>
-            <RoadLists />
-        </StoreProvider>
+        <VehicleStoreProvider initialVehicles={initialVehicles}>
+            <StoreProvider initialRoadLists={initialRoadLists}>
+                <RoadLists />
+            </StoreProvider>
+        </VehicleStoreProvider>
     );
 }

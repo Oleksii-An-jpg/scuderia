@@ -1,3 +1,5 @@
+// src/components/RoadListTable/index.tsx
+
 'use client';
 import { FC, memo, useMemo, useState } from 'react';
 import {
@@ -32,8 +34,10 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { CalculatedRoadList } from '@/types/roadList';
-import {isBoat, isCar} from '@/types/vehicle';
+import { isCar, isBoat } from '@/types/vehicle';
+import { useVehicleStore } from '@/lib/vehicleStore';
 import { decimalToTimeString } from '@/lib/timeUtils';
+import Clip from "@/components/Clip";
 
 type Props = {
     loading: boolean;
@@ -43,6 +47,7 @@ type Props = {
 }
 
 const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
+    const vehicles = useVehicleStore.getState().vehicles
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 10,
@@ -59,7 +64,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         cell: info => {
                             const model = info.row.original;
                             return (
-                                <Badge colorPalette="blue" size="lg">
+                                <Badge colorPalette="blue" size="sm">
                                     <Text fontWeight="bold">
                                         {new Intl.DateTimeFormat('uk-UA', {
                                             month: '2-digit',
@@ -96,6 +101,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     {
                         id: 'roadListID',
                         header: '№ д/л',
+                        enableSorting: false,
                         accessorKey: 'roadListID',
                         cell: info => {
                             const model = info.row.original;
@@ -119,9 +125,10 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         header: 'км',
                         cell: info => {
                             const model = info.row.original;
+                            const vehicleConfig = vehicles.find(({ id }) => id === model.vehicle);
                             return (
                                 <Text fontWeight="bold">
-                                    {isCar(model.vehicle) ? Math.round(model.hours) : null}
+                                    {vehicleConfig && isCar(vehicleConfig) ? Math.round(model.hours) : null}
                                 </Text>
                             );
                         },
@@ -130,9 +137,10 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         header: 'год.',
                         cell: info => {
                             const model = info.row.original;
+                            const vehicleConfig = vehicles.find(({ id }) => id === model.vehicle);
                             return (
                                 <Text fontWeight="bold">
-                                    {isBoat(model.vehicle) ? decimalToTimeString(model.hours, true) : null}
+                                    {vehicleConfig && isBoat(vehicleConfig) ? decimalToTimeString(model.hours, true) : null}
                                 </Text>
                             );
                         },
@@ -142,10 +150,12 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
             {
                 id: 'odometerOrHours',
                 header: (info) => {
-                    const vehicle = info.table.getRowModel().rows[0]?.original.vehicle;
+                    const firstRow = info.table.getRowModel().rows[0]?.original;
+                    if (!firstRow) return null;
+                    const vehicleConfig = vehicles.find(({ id }) => id === info.table.getRowModel().rows[0]?.original.vehicle);
                     return (
                         <Text fontWeight="bold">
-                            {`${vehicle && (isBoat(vehicle) ? 'Напрацювання двигунів (год:хв)' : 'Одометр (км)')}`}
+                            {vehicleConfig && (isBoat(vehicleConfig) ? 'Напрацювання двигунів (год:хв)' : 'Одометр (км)')}
                         </Text>
                     );
                 },
@@ -156,11 +166,14 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
+                            const vehicleConfig = vehicles.find(({ id }) => id === model.vehicle);
+                            if (!vehicleConfig) return null;
+
                             return (
-                                <>{isBoat(model.vehicle) ? <HStack>
-                                    <Badge className="!select-text" colorPalette="purple" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.left)}</Badge>
-                                    <Badge className="!select-text" colorPalette="yellow" fontWeight="bold">{typeof model.startHours === 'object' && decimalToTimeString(model.startHours.right)}</Badge>
-                                </HStack> : <Text fontWeight="bold">{typeof model.startHours === 'number' && Math.round(model.startHours)}</Text>}</>
+                                <>{isBoat(vehicleConfig) ? <HStack>
+                                    <Clip value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.left) : undefined} />
+                                    <Clip value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.right) : undefined} />
+                                </HStack> : <Clip value={typeof model.startHours === 'number' ? String(Math.round(model.startHours)) : undefined} />}</>
                             );
                         }
                     },
@@ -170,11 +183,14 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
+                            const vehicleConfig = vehicles.find(({ id }) => id === model.vehicle);
+                            if (!vehicleConfig) return null;
+
                             return (
-                                <>{isBoat(model.vehicle) ? <HStack>
-                                    <Badge colorPalette="purple" fontWeight="bold">{typeof model.cumulativeHours === 'object' && decimalToTimeString(model.cumulativeHours.left)}</Badge>
-                                    <Badge colorPalette="yellow" fontWeight="bold">{typeof model.cumulativeHours === 'object' && decimalToTimeString(model.cumulativeHours.right)}</Badge>
-                                </HStack> : <Text fontWeight="bold">{typeof model.cumulativeHours === 'number' && Math.round(model.cumulativeHours)}</Text>}</>
+                                <>{isBoat(vehicleConfig) ? <HStack>
+                                    <Clip value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.left) : undefined} />
+                                    <Clip value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.right) : undefined} />
+                                </HStack> : <Clip value={typeof model.cumulativeHours === 'number' ? String(Math.round(model.cumulativeHours)) : undefined} />}</>
                             );
                         }
                     }
@@ -245,7 +261,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                 }
             }
         ],
-        []
+        [vehicles]
     );
 
     const table = useReactTable({

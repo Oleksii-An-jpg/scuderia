@@ -1,3 +1,5 @@
+// src/components/RoadLists/index.tsx
+
 'use client';
 import {FC, useEffect, useMemo, useRef, useState} from 'react';
 import {
@@ -10,12 +12,13 @@ import {
     CloseButton
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
-import {Vehicle, getModes, isBoat} from '@/types/vehicle';
-import {Itinerary, RoadList} from '@/types/roadList';
+import { useVehicleStore } from '@/lib/vehicleStore';
+import { Vehicle, getModes, isBoat } from '@/types/vehicle';
+import { Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
 import { onSnapshot, collection } from "firebase/firestore";
-import {db} from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 
 const RoadLists: FC = () => {
     const loading = useStore(state => state.loading);
@@ -25,6 +28,8 @@ const RoadLists: FC = () => {
     const getById = useStore(state => state.getById);
     const deleteRoadList = useStore(state => state.delete);
     const fetchAll = useStore(state => state.fetchAll);
+
+    const vehicles = useVehicleStore(state => state.activeVehicles);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -46,7 +51,6 @@ const RoadLists: FC = () => {
                 return;
             }
 
-            // read latest loading value without re-subscribing
             if (!loadingRef.current) {
                 fetchAll();
             }
@@ -55,31 +59,28 @@ const RoadLists: FC = () => {
         return () => unsub();
     }, []);
 
-    // const handleVisibility = useCallback(() => {
-    //     if (document.visibilityState === "hidden") {
-    //     } else if (document.visibilityState === "visible") {
-    //         fetchAll();
-    //     }
-    // }, []);
-    //
-    // useEffect(() => {
-    //     document.addEventListener("visibilitychange", handleVisibility);
-    //
-    //     return () => {
-    //         document.removeEventListener("visibilitychange", handleVisibility);
-    //     };
-    // }, []);
+    // Set initial selected vehicle if none selected
+    useEffect(() => {
+        if (!selectedVehicle && vehicles.length > 0) {
+            setSelectedVehicle(vehicles[0].id);
+        }
+    }, [selectedVehicle, vehicles, setSelectedVehicle]);
 
-    const roadLists = getByVehicle(selectedVehicle);
+    const roadLists = selectedVehicle ? getByVehicle(selectedVehicle) : [];
 
     const editingRoadList = useMemo<RoadList | null>(() => {
         if (editingId) {
             return getById(editingId) ?? null;
         }
 
+        if (!selectedVehicle) return null;
+
+        const vehicleConfig = useVehicleStore.getState().vehicles.find(v => v.id === selectedVehicle);
+        if (!vehicleConfig) return null;
+
         // Creating new roadlist
         const lastRoadList = roadLists[roadLists.length - 1];
-        const modes = getModes(selectedVehicle);
+        const modes = getModes(vehicleConfig);
 
         const newItinerary: Itinerary = {
             date: new Date(),
@@ -90,16 +91,14 @@ const RoadLists: FC = () => {
 
         modes.forEach(mode => {
             // @ts-expect-error: dynamic keys
-            newItinerary[mode] = null;
+            newItinerary[mode.id] = null;
         });
 
-        // Determine initial startHours based on vehicle type
         let initialStartHours;
         if (lastRoadList) {
             initialStartHours = lastRoadList.cumulativeHours;
         } else {
-            // No previous roadlists, use default
-            initialStartHours = isBoat(selectedVehicle)
+            initialStartHours = isBoat(vehicleConfig)
                 ? { left: 0, right: 0 }
                 : 0;
         }
@@ -134,28 +133,42 @@ const RoadLists: FC = () => {
     };
 
     const handleDelete = async () => {
-        if (deletingId) {
+        if (deletingId && selectedVehicle) {
             await deleteRoadList(deletingId, selectedVehicle);
             setIsDeleteOpen(false);
             setDeletingId(null);
         }
     };
 
+    if (vehicles.length === 0) {
+        return (
+            <Card.Root>
+                <Card.Body>
+                    <p>No vehicles configured. Please add vehicles first.</p>
+                </Card.Body>
+            </Card.Root>
+        );
+    }
+
     return (
         <VStack alignItems="stretch">
             <Card.Root>
                 <Card.Header>Дорожні листи</Card.Header>
                 <Card.Body>
-                    <Tabs.Root value={selectedVehicle} onValueChange={(e) => setSelectedVehicle(e.value as Vehicle)}>
+                    <Tabs.Root
+                        value={selectedVehicle || undefined}
+                        onValueChange={(e) => setSelectedVehicle(e.value as Vehicle)}
+                    >
                         <Tabs.List>
-                            <Tabs.Trigger value={Vehicle.MAMBA}>Mamba</Tabs.Trigger>
-                            <Tabs.Trigger value={Vehicle.KMAR}>KMAR</Tabs.Trigger>
-                            <Tabs.Trigger value={Vehicle.F250}>Ford F250</Tabs.Trigger>
-                            <Tabs.Trigger value={Vehicle.MASTER}>Renault Master</Tabs.Trigger>
+                            {vehicles.map(vehicle => (
+                                <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
+                                    {vehicle.name}
+                                </Tabs.Trigger>
+                            ))}
                         </Tabs.List>
 
-                        {Object.values(Vehicle).map(vehicle => (
-                            <Tabs.Content key={vehicle} value={vehicle}>
+                        {vehicles.map(vehicle => (
+                            <Tabs.Content key={vehicle.id} value={vehicle.id}>
                                 <RoadListTable
                                     loading={loading}
                                     roadLists={roadLists}

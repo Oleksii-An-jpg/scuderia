@@ -67,11 +67,3 @@ export function getVehicleConfig(vehicleId: Vehicle, configs: VehicleConfig[]): 
     if (!config) throw new Error(`Vehicle config not found for: ${vehicleId}`);
     return config;
 }
-
-// Legacy vehicle IDs (for migration reference)
-export const LEGACY_VEHICLES = {
-    MAMBA: 'mamba',
-    KMAR: 'kmar',
-    F250: 'f250',
-    MASTER: 'master',
-} as const;

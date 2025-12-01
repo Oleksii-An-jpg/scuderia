@@ -47,7 +47,7 @@ const RoadLists: FC = () => {
     useEffect(() => {
         let isInitial = true;
 
-        const unsub = onSnapshot(collection(db, "road-lists"), snap => {
+        const unsub = onSnapshot(collection(db(), "road-lists"), snap => {
             if (isInitial) {
                 isInitial = false;
                 return;

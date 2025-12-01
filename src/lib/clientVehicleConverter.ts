@@ -1,7 +1,6 @@
-// src/lib/vehicleConverter.ts
 
 import { VehicleConfig, FirestoreVehicle, SerializableVehicle } from '@/types/vehicle';
-import { QueryDocumentSnapshot, Timestamp } from "firebase-admin/firestore";
+import { QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
 
 // Convert Firestore -> VehicleConfig
 export function firestoreToVehicle(data: FirestoreVehicle, id: string): VehicleConfig {

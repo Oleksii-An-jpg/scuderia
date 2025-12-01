@@ -1,25 +1,27 @@
 // src/lib/firebaseAdmin.ts
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { RoadList, SerializableRoadList } from '@/types/roadList';
 import { SerializableVehicle, VehicleConfig } from '@/types/vehicle';
 import { adminConverter } from "@/lib/converter";
 import { adminVehicleConverter, toSerializableVehicle } from '@/lib/vehicleConverter';
+import {getAuth} from "firebase-admin/auth";
 
-// Initialize Firebase Admin (only once)
-if (!getApps().length) {
-    initializeApp({
+const app = !getApps().length
+    ? initializeApp({
         credential: cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
             privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
         }),
         storageBucket: 'scuderia-docs'
-    });
-}
+    })
+    : getApps()[0];
 
-const adminDb = getFirestore();
+export const adminDb = getFirestore();
+
+export const adminAuth = getAuth(app);
 
 // Convert RoadList to serializable format (Dates -> ISO strings)
 function toSerializable(roadList: RoadList): SerializableRoadList {
@@ -34,10 +36,10 @@ function toSerializable(roadList: RoadList): SerializableRoadList {
     };
 }
 
-export async function getAllVehiclesServer(): Promise<SerializableVehicle[]> {
+export async function getAllVehiclesServer(db: Firestore = adminDb): Promise<SerializableVehicle[]> {
     try {
         console.time('Firestore vehicles query');
-        const snapshot = await adminDb
+        const snapshot = await db
             .collection('vehicles')
             .withConverter(adminVehicleConverter)
             .where('active', '==', true)
@@ -59,11 +61,11 @@ export async function getAllVehiclesServer(): Promise<SerializableVehicle[]> {
     }
 }
 
-export async function getAllRoadListsServer(): Promise<SerializableRoadList[]> {
+export async function getAllRoadListsServer(db: Firestore = adminDb): Promise<SerializableRoadList[]> {
     try {
         // First fetch vehicles to pass to converter
         console.time('Fetch vehicles for roadlist conversion');
-        const vehiclesSnapshot = await adminDb
+        const vehiclesSnapshot = await db
             .collection('vehicles')
             .withConverter(adminVehicleConverter)
             .get();
@@ -71,7 +73,7 @@ export async function getAllRoadListsServer(): Promise<SerializableRoadList[]> {
         console.timeEnd('Fetch vehicles for roadlist conversion');
 
         console.time('Firestore roadlists query');
-        const snapshot = await adminDb
+        const snapshot = await db
             .collection('road-lists')
             .withConverter(adminConverter(vehicleConfigs))
             .orderBy('end', 'asc')
@@ -92,3 +94,24 @@ export async function getAllRoadListsServer(): Promise<SerializableRoadList[]> {
         throw error;
     }
 }
+
+// export async function upsertVehicle(db: Firestore = adminDb): Promise<SerializableVehicle> {
+//     const collection = adminDb.collection('vehicles').withConverter(new VehicleConverter());
+//     const doc = typeof data.id === 'string' && await collection.doc(data.id).get();
+//
+//     if (typeof data.id === 'string' && doc && doc.exists) {
+//         const now = new Date();
+//         await collection.doc(data.id).set({
+//             ...data,
+//             updatedAt: now,
+//         }, { merge: true });
+//     } else {
+//         const now = new Date();
+//         await collection.add({
+//             ...data,
+//             id: data.name,
+//             createdAt: now,
+//             updatedAt: now,
+//         });
+//     }
+// }

@@ -4,7 +4,7 @@
 import { useRef, ReactNode } from 'react';
 import { useVehicleStore } from '@/lib/vehicleStore';
 import { SerializableVehicle, VehicleConfig } from '@/types/vehicle';
-import { deserializeVehicle } from '@/lib/vehicleConverter';
+import { deserializeVehicle } from '@/lib/clientVehicleConverter';
 
 type Props = {
     initialVehicles: SerializableVehicle[];

@@ -316,7 +316,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     ))
                 ) : roadLists.length === 0 ? (
                     <Table.Row>
-                        <Table.Cell colSpan={columns.length}>
+                        <Table.Cell colSpan={table.getAllLeafColumns().length}>
                             <EmptyState.Root>
                                 <EmptyState.Content>
                                     <EmptyState.Indicator>

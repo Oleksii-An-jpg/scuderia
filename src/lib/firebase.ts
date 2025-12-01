@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
 
 'use client';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import {
     getFirestore,
     collection,
@@ -13,19 +13,49 @@ import {
     DocumentData,
     QueryDocumentSnapshot,
     FirestoreDataConverter,
+    Firestore,
 } from 'firebase/firestore';
 import { RoadList, FirestoreRoadList, EngineHours } from '@/types/roadList';
 import { Vehicle, VehicleConfig } from '@/types/vehicle';
 import { firestoreToRoadList, roadListToFirestore } from "@/lib/converter";
 import { uploadDocToBucket } from "@/lib/storage";
 import { useVehicleStore } from '@/lib/vehicleStore';
+import {getAuth} from "firebase/auth";
 
-const app = initializeApp({
-    projectId: 'cookbook-460911',
-    apiKey: 'AIzaSyDjgyzE4AUL_ssOkL791sUBNNBnelljXpM',
-});
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+}
 
-export const db = getFirestore(app);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+
+// Lazy database initialization based on subdomain
+let db: Firestore | null = null;
+
+export { getDb as db };
+
+function getDb(): Firestore {
+    if (!db) {
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            const parts = hostname.split('.');
+            if (parts.length > 1) {
+                const [subdomain] = parts;
+                // Use subdomain as database ID for Firebase multi-database
+                db = getFirestore(app, subdomain);
+            } else {
+                db = getFirestore(app);
+            }
+        } else {
+            // SSR fallback - use default database
+            db = getFirestore(app);
+        }
+    }
+    return db;
+}
+
+export const auth = getAuth(app);
 
 // Firestore converter - needs vehicle configs
 const createRoadListConverter = (vehicleConfigs: VehicleConfig[]): FirestoreDataConverter<RoadList> => ({
@@ -38,12 +68,14 @@ const createRoadListConverter = (vehicleConfigs: VehicleConfig[]): FirestoreData
     },
 });
 
-export const roadListsRef = collection(db, 'road-lists');
+function getRoadListsRef() {
+    return collection(getDb(), 'road-lists');
+}
 
 export async function getAllRoadLists(): Promise<RoadList[]> {
     const vehicleConfigs = useVehicleStore.getState().vehicles;
     const converter = createRoadListConverter(vehicleConfigs);
-    const roadListsWithConverter = roadListsRef.withConverter(converter);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
 
     const q = query(roadListsWithConverter, orderBy('end', 'asc'));
     const snapshot = await getDocs(q);
@@ -57,9 +89,9 @@ export async function upsertRoadList(
 ): Promise<void> {
     const vehicleConfigs = useVehicleStore.getState().vehicles;
     const converter = createRoadListConverter(vehicleConfigs);
-    const roadListsWithConverter = roadListsRef.withConverter(converter);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     const roadList = {
         ...rl,
         itineraries: rl.itineraries.map(it => ({
@@ -138,9 +170,9 @@ export async function deleteRoadList(
 ): Promise<void> {
     const vehicleConfigs = useVehicleStore.getState().vehicles;
     const converter = createRoadListConverter(vehicleConfigs);
-    const roadListsWithConverter = roadListsRef.withConverter(converter);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     const docRef = doc(roadListsWithConverter, id);
 
     const vehicleRoadLists = allRoadLists

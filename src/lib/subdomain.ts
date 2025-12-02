@@ -13,4 +13,6 @@ export const setup = async () => {
         const [subdomain] = parts;
         return getFirestore(subdomain);
     }
+
+    return getFirestore();
 };

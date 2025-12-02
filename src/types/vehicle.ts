@@ -1,5 +1,3 @@
-// src/types/vehicle.ts
-
 import { Timestamp } from "firebase/firestore";
 
 // Vehicle is now just a string (vehicle ID from Firestore)
@@ -27,9 +25,9 @@ export type VehicleConfig = {
 }
 
 // Firestore version
-export type FirestoreVehicle = Omit<VehicleConfig, 'id' | 'createdAt' | 'updatedAt'> & {
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
+export type FirestoreVehicle<T = Timestamp> = Omit<VehicleConfig, 'id' | 'createdAt' | 'updatedAt'> & {
+    createdAt: T;
+    updatedAt: T;
 }
 
 // Serializable version for SSR

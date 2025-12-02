@@ -53,7 +53,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         itineraries,
         startFuel,
         startHours,
-    }), [itinerariesKey, startFuel, startHours, roadList]);
+    }), [itinerariesKey, startFuel, typeof startHours === 'object' ? startHours.left : startHours, typeof startHours === 'object' ? startHours.right : startHours, roadList]);
 
     // Now debounce the STABLE input
     const debouncedInput = useDebouncedValue(calculationInput, 200);
@@ -144,8 +144,8 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                             <GridItem><Heading size="sm">Залишок</Heading></GridItem>
                             {isBoat(vehicleConfig) ? (
                                 <>
-                                    <GridItem><Heading size="sm">Л двигун</Heading></GridItem>
-                                    <GridItem><Heading size="sm">П двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm" className="whitespace-nowrap">Л двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm" className="whitespace-nowrap">П двигун</Heading></GridItem>
                                 </>
                             ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
                             <GridItem>

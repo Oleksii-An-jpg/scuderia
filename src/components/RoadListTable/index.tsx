@@ -100,7 +100,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     },
                     {
                         id: 'roadListID',
-                        header: '№ д/л',
+                        header: () => <Text className="whitespace-nowrap">№ д/л</Text>,
                         enableSorting: false,
                         accessorKey: 'roadListID',
                         cell: info => {
@@ -171,8 +171,8 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
 
                             return (
                                 <>{isBoat(vehicleConfig) ? <HStack>
-                                    <Clip value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.left) : undefined} />
-                                    <Clip value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.right) : undefined} />
+                                    <Clip startElement="л" value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.left) : undefined} />
+                                    <Clip startElement="п" value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.right) : undefined} />
                                 </HStack> : <Clip value={typeof model.startHours === 'number' ? String(Math.round(model.startHours)) : undefined} />}</>
                             );
                         }
@@ -188,8 +188,8 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
 
                             return (
                                 <>{isBoat(vehicleConfig) ? <HStack>
-                                    <Clip value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.left) : undefined} />
-                                    <Clip value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.right) : undefined} />
+                                    <Clip startElement="л" value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.left) : undefined} />
+                                    <Clip startElement="п" value={typeof model.cumulativeHours === 'object' ? decimalToTimeString(model.cumulativeHours.right) : undefined} />
                                 </HStack> : <Clip value={typeof model.cumulativeHours === 'number' ? String(Math.round(model.cumulativeHours)) : undefined} />}</>
                             );
                         }
@@ -278,7 +278,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
     });
 
     return (
-        <Table.Root showColumnBorder variant="outline">
+        <Table.Root showColumnBorder variant="outline" size="sm">
             <Table.Header>
                 {table.getHeaderGroups().map(headerGroup => (
                     <Table.Row key={headerGroup.id}>

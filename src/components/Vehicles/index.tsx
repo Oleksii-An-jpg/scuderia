@@ -24,16 +24,22 @@ import {BiBowlHot, BiHappy, BiPlus, BiSad, BiTrash} from "react-icons/bi";
 import {useBoolean} from "usehooks-ts";
 import {useForm, useFieldArray, Controller} from "react-hook-form";
 import {useRouter} from "next/navigation";
+import {SerializableRoadList} from "@/types/roadList";
 
 type VehiclesProps = {
     vehicles: SerializableVehicle[];
+    roadLists: SerializableRoadList[];
 }
 
-type Values = Omit<VehicleConfig, 'modes'> & {
+type Values = Omit<VehicleConfig, 'modes' | 'createdAt' | 'updatedAt'> & {
     modes: Partial<VehicleMode>[]
 }
 
-const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
+type VehicleWithCount = SerializableVehicle & {
+    count: number
+}
+
+const Vehicles: FC<VehiclesProps> = (props) => {
     const { value, setValue: setDialogValue, setTrue } = useBoolean();
     const { handleSubmit, setValue, watch, formState: { isSubmitting, isValid }, control, register, reset } = useForm<Values>({
         defaultValues: {
@@ -41,15 +47,21 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
             active: true
         }
     });
+    const vehicles = useMemo(() => {
+        return props.vehicles.map(vehicle => ({
+            ...vehicle,
+            count: props.roadLists.filter(rl => rl.vehicle === vehicle.id).length
+        }))
+    }, [props.vehicles]);
     const { fields, append, remove } = useFieldArray({
         control, // control props comes from useForm (optional: if you are using FormProvider)
         name: "modes", // unique name for your Field Array
     });
-    const type = watch('type');
+    const [id, type] = watch(['id', 'type']);
     useEffect(() => {
         setValue('unit', type === 'car' ? 'km' : 'hours');
     }, [type]);
-    const columns = useMemo<ColumnDef<SerializableVehicle>[]>(() => [
+    const columns = useMemo<ColumnDef<VehicleWithCount>[]>(() => [
         {
             accessorKey: 'id',
             header: 'Ідентифікатор',
@@ -74,7 +86,7 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
         },
         {
             accessorKey: 'modes',
-            header: 'Швидкісні режими та коефіцієнти витрат пального',
+            header: 'Швидкісні режими',
             cell: (info) => {
                 const modes = info.getValue() as SerializableVehicle['modes'];
 
@@ -123,9 +135,36 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
                     minute: '2-digit',
                 }).format(new Date(vehicle.updatedAt))
             }
+        },
+        {
+            accessorKey: 'count',
+            header: 'Дорожних листів'
+        },
+        {
+            accessorKey: 'id',
+            header: 'Дії',
+            id: 'actions',
+            enableSorting: false,
+            cell: info => {
+                return <HStack>
+                    <Button size="xs" onClick={() => {
+                        const vehicle = vehicles.find(({ id }) => id === info.getValue())
+
+                        if (vehicle) {
+                            reset(vehicle);
+                            setTrue();
+                        }
+                    }}>
+                        Переглянути
+                    </Button>
+                </HStack>
+            }
         }
     ], []);
     const router = useRouter();
+    const isEditing = useMemo(() => {
+        return !!vehicles.find((vehicle) => vehicle.id === id);
+    }, [id, vehicles]);
 
     const table = useReactTable({
         columns,
@@ -216,7 +255,7 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
                         <Dialog.Content maxH="100%">
                             <Dialog.Header>
                                 <Dialog.Title>
-                                    Додати транспортний засіб
+                                    {isEditing ? 'Редагувати' : 'Додати транспортний засіб'}
                                 </Dialog.Title>
                             </Dialog.Header>
                             <Dialog.Body css={{ "--field-label-width": '18em'}}>
@@ -229,6 +268,8 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
                                     reset(data);
 
                                     router.refresh();
+
+                                    setDialogValue(false);
                                 })}>
                                     <VStack align="stretch">
                                         <Field.Root orientation="horizontal" required>
@@ -238,6 +279,7 @@ const Vehicles: FC<VehiclesProps> = ({ vehicles }) => {
                                             </Field.Label>
                                             <Input
                                                 autoComplete="off"
+                                                disabled={isEditing}
                                                 {...register('id', {
                                                     required: true
                                                 })}

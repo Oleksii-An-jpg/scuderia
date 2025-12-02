@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {FirestoreVehicle, VehicleConfig} from "@/types/vehicle";
 import {firestoreToVehicle, vehicleToFirestore} from "@/lib/vehicleConverter";
-import {QueryDocumentSnapshot, FirestoreDataConverter} from "firebase-admin/firestore";
+import {QueryDocumentSnapshot, FirestoreDataConverter, Timestamp} from "firebase-admin/firestore";
 import {setup} from "@/lib/subdomain";
 
 class VehicleConverter implements FirestoreDataConverter<VehicleConfig> {
-    toFirestore(vehicle: VehicleConfig): FirestoreVehicle {
+    toFirestore(vehicle: VehicleConfig): FirestoreVehicle<Timestamp> {
         return vehicleToFirestore(vehicle);
     }
 
@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
         throw new Error('DB is missing');
     }
     const collection = db.collection('vehicles').withConverter(new VehicleConverter());
-    const doc = typeof data.id === 'string' && await collection.doc(data.id).get();
+    const doc = await collection.doc(data.id).get();
 
-    if (typeof data.id === 'string' && doc && doc.exists) {
+    if (doc.exists) {
         const now = new Date();
         await collection.doc(data.id).set({
             ...data,

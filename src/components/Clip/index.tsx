@@ -13,12 +13,13 @@ const ClipboardIconButton = () => {
 }
 
 type ClipProps = {
-    value?: string
+    value?: string;
+    startElement?: string;
 }
 
-const Clip: FC<ClipProps> = ({ value }) => {
-    return <Clipboard.Root w="100px" value={value}>
-        <InputGroup endElement={<ClipboardIconButton />}>
+const Clip: FC<ClipProps> = ({ value, startElement }) => {
+    return <Clipboard.Root w="120px" value={value}>
+        <InputGroup startElement={startElement} endElement={<ClipboardIconButton />}>
             <Clipboard.Input asChild>
                 <Input size="2xs" />
             </Clipboard.Input>

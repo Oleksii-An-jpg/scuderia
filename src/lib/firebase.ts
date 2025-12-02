@@ -1,5 +1,3 @@
-// src/lib/firebase.ts
-
 'use client';
 import { initializeApp, getApps } from 'firebase/app';
 import {
@@ -92,6 +90,8 @@ export async function upsertRoadList(
     const roadListsWithConverter = getRoadListsRef().withConverter(converter);
 
     const batch = writeBatch(getDb());
+
+    // Prepare roadList for saving (convert File objects to filenames)
     const roadList = {
         ...rl,
         itineraries: rl.itineraries.map(it => ({
@@ -108,7 +108,11 @@ export async function upsertRoadList(
     // Find all roadlists for this vehicle, sorted by date
     const vehicleRoadLists = allRoadLists
         .filter(rl => rl.vehicle === vehicle)
-        .sort((a, b) => a.end.getTime() - b.end.getTime());
+        .sort((a, b) => {
+            const aTime = a.end.getTime();
+            const bTime = b.end.getTime();
+            return aTime - bTime;
+        });
 
     if (roadList.id) {
         // Update existing
@@ -117,7 +121,9 @@ export async function upsertRoadList(
 
         // Find index and recalculate subsequent ones
         const index = vehicleRoadLists.findIndex(rl => rl.id === roadList.id);
+
         if (index !== -1) {
+            // Replace with updated version
             vehicleRoadLists[index] = roadList;
 
             // Recalculate all following roadlists
@@ -132,13 +138,17 @@ export async function upsertRoadList(
 
                 const prevCalculated = calculateRoadList(prev, vehicleConfig);
 
-                const updated = {
+                // Create updated roadlist with new starting values
+                const updated: RoadList = {
                     ...current,
                     startHours: prevCalculated.cumulativeHours,
                     startFuel: prevCalculated.cumulativeFuel,
                 };
 
+                // Update in-memory array for next iteration
                 vehicleRoadLists[i] = updated;
+
+                // Write to Firestore
                 const currentDocRef = doc(roadListsWithConverter, current.id!);
                 batch.set(currentDocRef, updated);
             }
@@ -151,6 +161,8 @@ export async function upsertRoadList(
 
     try {
         await batch.commit();
+
+        // Upload files after successful commit
         await Promise.all(
             rl.itineraries
                 .map(it => it.docs?.filter(doc => doc instanceof File))
@@ -159,7 +171,8 @@ export async function upsertRoadList(
                 .map(uploadDocToBucket)
         );
     } catch (e) {
-        console.error(e);
+        console.error('Error upserting roadlist:', e);
+        throw e;
     }
 }
 

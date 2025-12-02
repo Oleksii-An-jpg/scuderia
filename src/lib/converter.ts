@@ -1,5 +1,3 @@
-// src/lib/converter.ts
-
 import { RoadList, FirestoreRoadList } from '@/types/roadList';
 import {Timestamp} from "firebase/firestore";
 import {QueryDocumentSnapshot} from "firebase-admin/firestore";
@@ -15,9 +13,12 @@ export function firestoreToRoadList(data: FirestoreRoadList, id: string, vehicle
         vehicle: data.vehicle,
         roadListID: data.roadListID,
         startFuel: data.startFuel,
-        startHours: typeof data.startHours === 'object' ? data.startHours : isBoat ? {
-            left: data.startHours,
-            right: data.startHours,
+        startHours: typeof data.startHours === 'object' ? {
+            left: Math.round(data.startHours.left * 100) / 100,
+            right: Math.round(data.startHours.right * 100) / 100,
+        } : isBoat ? {
+            left: Math.round(data.startHours * 100) / 100,
+            right: Math.round(data.startHours * 100) / 100,
         } : data.startHours,
         id,
         start: data.start.toDate(),

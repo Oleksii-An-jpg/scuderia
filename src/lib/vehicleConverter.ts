@@ -18,15 +18,15 @@ export function firestoreToVehicle(data: FirestoreVehicle, id: string): VehicleC
 }
 
 // Convert VehicleConfig -> Firestore
-export function vehicleToFirestore(vehicle: VehicleConfig) {
+export function vehicleToFirestore(vehicle: VehicleConfig): FirestoreVehicle<Timestamp> {
     return {
         name: vehicle.name,
         type: vehicle.type,
         unit: vehicle.unit,
         modes: vehicle.modes,
         active: vehicle.active,
-        createdAt: Timestamp.fromDate(vehicle.createdAt),
-        updatedAt: Timestamp.fromDate(vehicle.updatedAt),
+        createdAt: Timestamp.fromDate(new Date(vehicle.createdAt)),
+        updatedAt: Timestamp.fromDate(new Date(vehicle.updatedAt)),
     };
 }
 

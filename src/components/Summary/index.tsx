@@ -15,8 +15,6 @@ type Props = {
 
 const Summary: FC<Props> = ({ calculated, vehicle }) => {
     const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
-    if (!vehicleConfig) return null;
-
     const modes = getModes(vehicleConfig);
 
     const modeTotals = useMemo(() => {

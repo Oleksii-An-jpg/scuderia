@@ -15,7 +15,13 @@ type VehicleStoreActions = {
 
 // Selector functions outside the store to avoid hydration issues
 export const selectVehicleById = (state: VehicleStoreState, id: string) => {
-    return state.vehicles.find(v => v.id === id);
+    const config = state.vehicles.find(v => v.id === id);
+
+    if (!config) {
+        throw new Error('vehicles not found');
+    }
+
+    return config;
 };
 
 export const useVehicleStore = create<VehicleStoreState & VehicleStoreActions>((set) => ({

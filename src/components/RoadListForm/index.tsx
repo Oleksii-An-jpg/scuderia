@@ -25,10 +25,6 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
 
     const vehicleConfig = useVehicleStore(state => selectVehicleById(state, roadList.vehicle));
 
-    if (!vehicleConfig) {
-        return <div>Vehicle configuration not found</div>;
-    }
-
     const modes = getModes(vehicleConfig);
 
     const methods = useForm<RoadList>({

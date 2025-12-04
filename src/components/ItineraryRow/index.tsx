@@ -65,8 +65,6 @@ const FileUploadList = () => {
 const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast }) => {
     const { control, register, watch, setValue } = useFormContext<RoadList>();
     const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
-    if (!vehicleConfig) return null;
-
     const modes = getModes(vehicleConfig);
     const files = watch(`itineraries.${index}.docs`);
 

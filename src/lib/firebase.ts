@@ -38,7 +38,7 @@ function getDb(): Firestore {
         if (typeof window !== 'undefined') {
             const hostname = window.location.hostname;
             const parts = hostname.split('.');
-            if (parts.length > 1) {
+            if (parts.length > 2) {
                 const [subdomain] = parts;
                 // Use subdomain as database ID for Firebase multi-database
                 db = getFirestore(app, subdomain);

@@ -9,7 +9,7 @@ export const setup = async () => {
         headersList.get("host") ||
         ""
     ).split(".");
-    if (parts.length > 1) {
+    if (parts.length > 2) {
         const [subdomain] = parts;
         return getFirestore(subdomain);
     }

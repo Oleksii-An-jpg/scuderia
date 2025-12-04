@@ -10,7 +10,8 @@ import {
     Portal,
     Button,
     CloseButton,
-    Text
+    Text, HStack,
+    Link as ChakraLink
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -21,8 +22,14 @@ import RoadListForm from '@/components/RoadListForm';
 import { onSnapshot, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {usePathname} from "next/navigation";
+import Link from "next/link";
+import {BiAnchor, BiUser} from "react-icons/bi";
 
-const RoadLists: FC = () => {
+type RoadListProps = {
+    role?: string;
+}
+
+const RoadLists: FC<RoadListProps> = ({ role }) => {
     const loading = useStore(state => state.loading);
     const selectedVehicle = useStore(state => state.selectedVehicle);
     const setSelectedVehicle = useStore(state => state.setSelectedVehicle);
@@ -158,7 +165,20 @@ const RoadLists: FC = () => {
     return (
         <VStack alignItems="stretch">
             <Card.Root>
-                <Card.Header>Дорожні листи</Card.Header>
+                <Card.Header>
+                    <HStack justifyContent="space-between">
+                        <Text>Дорожні листи</Text>
+                        {role === 'admin' ? <Button colorPalette="yellow" asChild>
+                            <ChakraLink asChild>
+                                <Link href="/admin"><BiAnchor /> Адмінка</Link>
+                            </ChakraLink>
+                        </Button> : role == null && <Button colorPalette="blue" asChild>
+                            <ChakraLink asChild>
+                                <Link href="/auth"><BiUser /> Авторизуватись</Link>
+                            </ChakraLink>
+                        </Button>}
+                    </HStack>
+                </Card.Header>
                 <Card.Body>
                     <Tabs.Root
                         value={selectedVehicle || undefined}

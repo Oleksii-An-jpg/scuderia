@@ -4,14 +4,6 @@ const nextConfig: NextConfig = {
     experimental: {
         optimizePackageImports: ["@chakra-ui/react"],
     },
-    async rewrites() {
-        return [
-            {
-                source: '/admin',
-                destination: '/admin/vehicles',
-            },
-        ]
-    },
     async redirects() {
         return [
             {

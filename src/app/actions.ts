@@ -18,7 +18,15 @@ export async function createSession(token: string) {
 
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
-    if (decoded.admin) {
+    if (decoded.role === 'admin') {
         redirect('/admin')
     }
+}
+
+export async function deleteSession() {
+    const cookieStore = await cookies();
+
+    cookieStore.delete('session')
+
+    redirect('/auth')
 }

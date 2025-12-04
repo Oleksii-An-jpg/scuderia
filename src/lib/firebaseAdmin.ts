@@ -6,7 +6,7 @@ import { RoadList, SerializableRoadList } from '@/types/roadList';
 import { SerializableVehicle, VehicleConfig } from '@/types/vehicle';
 import { adminConverter } from "@/lib/converter";
 import { adminVehicleConverter, toSerializableVehicle } from '@/lib/vehicleConverter';
-import {getAuth} from "firebase-admin/auth";
+import {getAuth, UserRecord} from "firebase-admin/auth";
 
 const app = !getApps().length
     ? initializeApp({
@@ -93,6 +93,32 @@ export async function getAllRoadListsServer(db: Firestore = adminDb): Promise<Se
         console.error('Error fetching from Firestore:', error);
         throw error;
     }
+}
+
+export async function getAllUsers() {
+    const users: UserRecord[] = [];
+    async function listAllUsers(nextPageToken?: string) {
+        try {
+            const listUsersResult = await adminAuth.listUsers(1000, nextPageToken);
+            users.push(...listUsersResult.users);
+            // listUsersResult.users.forEach((userRecord) => {
+            //     console.log(`User: ${userRecord.uid}, Email: ${userRecord.email}`);
+            //     // Access other user properties like displayName, photoURL, etc.
+            // });
+
+            if (listUsersResult.pageToken) {
+                // Recursively fetch the next batch
+                await listAllUsers(listUsersResult.pageToken);
+            }
+        } catch (error) {
+            console.error('Error listing users:', error);
+        }
+    }
+
+    // Start listing users from the beginning
+    await listAllUsers();
+
+    return users;
 }
 
 // export async function upsertVehicle(db: Firestore = adminDb): Promise<SerializableVehicle> {

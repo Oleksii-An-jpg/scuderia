@@ -1,9 +1,8 @@
-import LoginButton from "@/components/Login";
+'use server'
+import Auth from "@/components/Auth";
 
 export default async function Page() {
     return (
-        <div>
-            <LoginButton />
-        </div>
+        <Auth />
     )
 }

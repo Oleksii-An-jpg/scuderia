@@ -305,7 +305,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
 
             <Table.Body>
                 {loading ? (
-                    Array.from({ length: 10 }).map((_, index) => (
+                    Array.from({ length: table.getAllLeafColumns().length }).map((_, index) => (
                         <Table.Row key={index}>
                             {columns.map((_, colIndex) => (
                                 <Table.Cell key={colIndex}>

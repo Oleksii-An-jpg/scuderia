@@ -4,7 +4,8 @@ import {adminAuth} from "@/lib/firebaseAdmin";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {ReactNode} from "react";
-import {Card} from "@chakra-ui/react";
+import {Card, HStack} from "@chakra-ui/react";
+import Navigation from "@/components/Navigation";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
     const cookieStore = await cookies();
@@ -14,19 +15,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
     try {
         const decoded = await adminAuth.verifySessionCookie(sessionCookie.value, true);
-        if (!decoded.admin) redirect("/403");
+        if (decoded.role !== 'admin') redirect("/403");
     } catch {
         redirect("/auth");
     }
 
-    // await adminAuth
-    //         .setCustomUserClaims('8mrN16SztoSprkrhT8WDOBNX8Pg2', { admin: true })
-    //         .then(() => {
-    //             // The new custom claims will propagate to the user's ID token the
-    //             // next time a new one is issued.
-    //         });
-
-    return <Card.Root>
-        {children}
-    </Card.Root>
+    return <HStack align="start" gap={8}>
+        <Navigation />
+        <Card.Root flex={1}>
+            {children}
+        </Card.Root>
+    </HStack>
 }

@@ -1,5 +1,5 @@
 'use client';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import {
     getFirestore,
     collection,
@@ -11,34 +11,71 @@ import {
     DocumentData,
     QueryDocumentSnapshot,
     FirestoreDataConverter,
+    Firestore,
 } from 'firebase/firestore';
-import {RoadList, FirestoreRoadList, EngineHours} from '@/types/roadList';
-import { Vehicle } from '@/types/vehicle';
-import {firestoreToRoadList, roadListToFirestore} from "@/lib/converter";
-import {uploadDocToBucket} from "@/lib/storage";
+import { RoadList, FirestoreRoadList, EngineHours } from '@/types/roadList';
+import { Vehicle, VehicleConfig } from '@/types/vehicle';
+import { firestoreToRoadList, roadListToFirestore } from "@/lib/converter";
+import { uploadDocToBucket } from "@/lib/storage";
+import { useVehicleStore } from '@/lib/vehicleStore';
+import {getAuth} from "firebase/auth";
 
-const app = initializeApp({
-    projectId: 'cookbook-460911',
-    apiKey: 'AIzaSyDjgyzE4AUL_ssOkL791sUBNNBnelljXpM',
-});
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+}
 
-export const db = getFirestore(app);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Firestore converter
-export const roadListConverter: FirestoreDataConverter<RoadList> = {
+// Lazy database initialization based on subdomain
+let db: Firestore | null = null;
+
+export { getDb as db };
+
+function getDb(): Firestore {
+    if (!db) {
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            const parts = hostname.split('.');
+            if (parts.length > 1) {
+                const [subdomain] = parts;
+                // Use subdomain as database ID for Firebase multi-database
+                db = getFirestore(app, subdomain);
+            } else {
+                db = getFirestore(app);
+            }
+        } else {
+            // SSR fallback - use default database
+            db = getFirestore(app);
+        }
+    }
+    return db;
+}
+
+export const auth = getAuth(app);
+
+// Firestore converter - needs vehicle configs
+const createRoadListConverter = (vehicleConfigs: VehicleConfig[]): FirestoreDataConverter<RoadList> => ({
     toFirestore(roadList: RoadList): DocumentData {
         return roadListToFirestore(roadList);
     },
     fromFirestore(snapshot: QueryDocumentSnapshot<FirestoreRoadList>): RoadList {
         const data = snapshot.data();
-        return firestoreToRoadList(data, snapshot.id);
+        return firestoreToRoadList(data, snapshot.id, vehicleConfigs);
     },
-};
+});
 
-export const roadListsRef = collection(db, 'road-lists').withConverter(roadListConverter);
+function getRoadListsRef() {
+    return collection(getDb(), 'road-lists');
+}
 
 export async function getAllRoadLists(): Promise<RoadList[]> {
-    const q = query(roadListsRef, orderBy('end', 'asc'));
+    const vehicleConfigs = useVehicleStore.getState().vehicles;
+    const converter = createRoadListConverter(vehicleConfigs);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
+
+    const q = query(roadListsWithConverter, orderBy('end', 'asc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
 }
@@ -48,7 +85,13 @@ export async function upsertRoadList(
     vehicle: Vehicle,
     allRoadLists: RoadList[]
 ): Promise<void> {
-    const batch = writeBatch(db);
+    const vehicleConfigs = useVehicleStore.getState().vehicles;
+    const converter = createRoadListConverter(vehicleConfigs);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
+
+    const batch = writeBatch(getDb());
+
+    // Prepare roadList for saving (convert File objects to filenames)
     const roadList = {
         ...rl,
         itineraries: rl.itineraries.map(it => ({
@@ -57,7 +100,6 @@ export async function upsertRoadList(
                 if (typeof doc === 'string') {
                     return doc;
                 }
-
                 return doc.name
             })
         }))
@@ -66,16 +108,22 @@ export async function upsertRoadList(
     // Find all roadlists for this vehicle, sorted by date
     const vehicleRoadLists = allRoadLists
         .filter(rl => rl.vehicle === vehicle)
-        .sort((a, b) => a.end.getTime() - b.end.getTime());
+        .sort((a, b) => {
+            const aTime = a.end.getTime();
+            const bTime = b.end.getTime();
+            return aTime - bTime;
+        });
 
     if (roadList.id) {
         // Update existing
-        const docRef = doc(roadListsRef, roadList.id);
+        const docRef = doc(roadListsWithConverter, roadList.id);
         batch.set(docRef, roadList);
 
         // Find index and recalculate subsequent ones
         const index = vehicleRoadLists.findIndex(rl => rl.id === roadList.id);
+
         if (index !== -1) {
+            // Replace with updated version
             vehicleRoadLists[index] = roadList;
 
             // Recalculate all following roadlists
@@ -85,30 +133,46 @@ export async function upsertRoadList(
 
                 // Calculate previous to get ending values
                 const { calculateRoadList } = await import('./calculations');
-                const prevCalculated = calculateRoadList(prev);
+                const vehicleConfig = vehicleConfigs.find(v => v.id === vehicle);
+                if (!vehicleConfig) throw new Error(`Vehicle config not found: ${vehicle}`);
 
-                const updated = {
+                const prevCalculated = calculateRoadList(prev, vehicleConfig);
+
+                // Create updated roadlist with new starting values
+                const updated: RoadList = {
                     ...current,
                     startHours: prevCalculated.cumulativeHours,
                     startFuel: prevCalculated.cumulativeFuel,
                 };
 
+                // Update in-memory array for next iteration
                 vehicleRoadLists[i] = updated;
-                const currentDocRef = doc(roadListsRef, current.id!);
+
+                // Write to Firestore
+                const currentDocRef = doc(roadListsWithConverter, current.id!);
                 batch.set(currentDocRef, updated);
             }
         }
     } else {
         // Create new
-        const newDocRef = doc(roadListsRef);
+        const newDocRef = doc(roadListsWithConverter);
         batch.set(newDocRef, { ...roadList, id: newDocRef.id });
     }
 
     try {
         await batch.commit();
-        await Promise.all(rl.itineraries.map(it => it.docs?.filter(doc => doc instanceof File)).flat().filter(doc => !!doc).map(uploadDocToBucket))
+
+        // Upload files after successful commit
+        await Promise.all(
+            rl.itineraries
+                .map(it => it.docs?.filter(doc => doc instanceof File))
+                .flat()
+                .filter(doc => !!doc)
+                .map(uploadDocToBucket)
+        );
     } catch (e) {
-        console.error(e);
+        console.error('Error upserting roadlist:', e);
+        throw e;
     }
 }
 
@@ -117,8 +181,12 @@ export async function deleteRoadList(
     vehicle: Vehicle,
     allRoadLists: RoadList[]
 ): Promise<void> {
-    const batch = writeBatch(db);
-    const docRef = doc(roadListsRef, id);
+    const vehicleConfigs = useVehicleStore.getState().vehicles;
+    const converter = createRoadListConverter(vehicleConfigs);
+    const roadListsWithConverter = getRoadListsRef().withConverter(converter);
+
+    const batch = writeBatch(getDb());
+    const docRef = doc(roadListsWithConverter, id);
 
     const vehicleRoadLists = allRoadLists
         .filter(rl => rl.vehicle === vehicle)
@@ -137,11 +205,14 @@ export async function deleteRoadList(
         const current = vehicleRoadLists[i];
 
         let startHours: EngineHours | number;
-        let startFuel: EngineHours | number;
+        let startFuel: number;
 
         if (deletedIndex > 0) {
             const { calculateRoadList } = await import('./calculations');
-            const prevCalculated = calculateRoadList(vehicleRoadLists[deletedIndex - 1]);
+            const vehicleConfig = vehicleConfigs.find(v => v.id === vehicle);
+            if (!vehicleConfig) throw new Error(`Vehicle config not found: ${vehicle}`);
+
+            const prevCalculated = calculateRoadList(vehicleRoadLists[deletedIndex - 1], vehicleConfig);
             startHours = prevCalculated.cumulativeHours;
             startFuel = prevCalculated.cumulativeFuel;
         } else {
@@ -151,7 +222,7 @@ export async function deleteRoadList(
         }
 
         const updated = { ...current, startHours, startFuel };
-        const currentDocRef = doc(roadListsRef, current.id!);
+        const currentDocRef = doc(roadListsWithConverter, current.id!);
         batch.set(currentDocRef, updated);
     }
 

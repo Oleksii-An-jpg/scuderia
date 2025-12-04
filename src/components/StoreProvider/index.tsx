@@ -5,6 +5,7 @@ import {RoadList, SerializableRoadList} from '@/types/roadList';
 
 type Props = {
     initialRoadLists: SerializableRoadList[];
+    vehicle?: string;
     children: ReactNode;
 };
 
@@ -23,13 +24,13 @@ function deserializeRoadList(serializable: SerializableRoadList): RoadList {
     };
 }
 
-export default function StoreProvider({ initialRoadLists, children }: Props) {
+export default function StoreProvider({ initialRoadLists, vehicle, children }: Props) {
     const initialized = useRef(false);
 
     // Hydrate store synchronously before render
     if (!initialized.current) {
         const roadLists = initialRoadLists.map(deserializeRoadList);
-        useStore.getState().hydrate(roadLists);
+        useStore.getState().hydrate(roadLists, vehicle);
         initialized.current = true;
     }
 

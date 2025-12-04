@@ -1,17 +1,19 @@
+// src/lib/calculations.ts
+
 import { RoadList, CalculatedRoadList, CalculatedItinerary, EngineHours } from '@/types/roadList';
-import { VEHICLE_CONFIG, isBoat } from '@/types/vehicle';
+import { VehicleConfig, getModes, isBoat } from '@/types/vehicle';
 
 export function calculateRoadList(
     roadList: RoadList,
+    vehicleConfig: VehicleConfig,
     startFuel?: number,
     startHours?: EngineHours | number
 ): CalculatedRoadList {
-    const config = VEHICLE_CONFIG[roadList.vehicle];
     let cumulativeHours: EngineHours | number = startHours ?? roadList.startHours;
     let cumulativeFuel = startFuel ?? roadList.startFuel;
     let cumulativeReceivedFuel = 0;
 
-    const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
+    const modes = getModes(vehicleConfig);
 
     const enhancedItineraries: CalculatedItinerary[] = roadList.itineraries.map(it => {
         let rowHours = 0;
@@ -20,19 +22,19 @@ export function calculateRoadList(
         // Calculate based on vehicle type
         modes.forEach(mode => {
             // @ts-expect-error: dynamic keys
-            const value = (it[mode] as number) || 0;
+            const value = (it[mode.id] as number) || 0;
             rowHours += value;
-            rowConsumed += value * config.rates[mode];
+            rowConsumed += value * mode.rate;
         });
 
         // Round based on vehicle type
         rowHours = Math.round(rowHours * 100) / 100;
-        rowConsumed = config.type === 'car'
+        rowConsumed = vehicleConfig.type === 'car'
             ? Math.round(rowConsumed * 100) / 100
             : Math.round(rowConsumed);
 
         // Update cumulative hours
-        if (isBoat(roadList.vehicle) && typeof cumulativeHours === 'object') {
+        if (isBoat(vehicleConfig) && typeof cumulativeHours === 'object') {
             // For boats: both engines accumulate the same rowHours
             cumulativeHours = {
                 left: cumulativeHours.left + rowHours,
@@ -74,19 +76,24 @@ export function calculateRoadList(
 }
 
 export function calculateRoadListChain(
-    roadLists: RoadList[]
+    roadLists: RoadList[],
+    vehicleConfigs: VehicleConfig[]
 ): CalculatedRoadList[] {
     const results: CalculatedRoadList[] = [];
 
     for (let i = 0; i < roadLists.length; i++) {
         const current = roadLists[i];
 
-        // IMPORTANT: Use the stored startFuel and startHours from the roadlist itself
-        // These values are already set correctly during upsert to match the previous roadlist's end values
+        // Find vehicle config
+        const vehicleConfig = vehicleConfigs.find(v => v.id === current.vehicle);
+        if (!vehicleConfig) {
+            throw new Error(`Vehicle config not found for: ${current.vehicle}`);
+        }
+
         const startFuel = current.startFuel;
         const startHours = current.startHours;
 
-        results.push(calculateRoadList(current, startFuel, startHours));
+        results.push(calculateRoadList(current, vehicleConfig, startFuel, startHours));
     }
 
     return results;

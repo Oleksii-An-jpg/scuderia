@@ -1,3 +1,5 @@
+// src/components/ItineraryRow/index.tsx
+
 'use client';
 import {FC, memo, useEffect} from 'react';
 import {Controller, useFormContext} from 'react-hook-form';
@@ -17,7 +19,8 @@ import {
 import DatePicker from 'react-datepicker';
 import {BiTrash, BiUpload, BiX} from 'react-icons/bi';
 import {RoadList, CalculatedItinerary} from '@/types/roadList';
-import { Vehicle, VEHICLE_CONFIG, isBoat } from '@/types/vehicle';
+import { Vehicle, isBoat, getModes } from '@/types/vehicle';
+import {selectVehicleById, useVehicleStore} from '@/lib/vehicleStore';
 import { decimalToTimeString } from '@/lib/timeUtils';
 import TimeInput from '@/components/TimeInput';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -61,8 +64,12 @@ const FileUploadList = () => {
 
 const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast }) => {
     const { control, register, watch, setValue } = useFormContext<RoadList>();
-    const config = VEHICLE_CONFIG[vehicle];
+    const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
+    if (!vehicleConfig) return null;
+
+    const modes = getModes(vehicleConfig);
     const files = watch(`itineraries.${index}.docs`);
+
     useEffect(() => {
         async function parseDocs() {
             if (files && files.length > 0 && files?.every(file => typeof file === 'string')) {
@@ -78,15 +85,14 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
 
         parseDocs();
     }, [files]);
-    const modes = config.type === 'boat' ? config.speedModes : config.terrainModes;
 
     // Calculate column span: 3 (date, br, fuel) + modes.length + 7 (total, consumed, cumFuel, L motor, P motor, comment, files)
-    const totalColumns = 3 + modes.length + (isBoat(vehicle) ? 7 : 6);
+    const totalColumns = 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
 
     const rowHours = calculated?.rowHours ?? 0;
     const rowConsumed = calculated?.rowConsumed ?? 0;
     const cumulativeFuel = calculated?.cumulativeFuel ?? 0;
-    const cumulativeHours = calculated?.cumulativeHours ?? (isBoat(vehicle) ? { left: 0, right: 0 } : 0);
+    const cumulativeHours = calculated?.cumulativeHours ?? (isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0);
 
     return (
         <Controller name={`itineraries.${index}.docs`} control={control} render={({ field }) => <FileUpload.Root onFileChange={({ acceptedFiles }) => {
@@ -141,11 +147,11 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
 
                 {/* Dynamic mode fields */}
                 {modes.map(mode => (
-                    <GridItem key={mode}>
+                    <GridItem key={mode.id}>
                         <Field.Root>
-                            {isBoat(vehicle) ? (
+                            {isBoat(vehicleConfig) ? (
                                 // @ts-expect-error: dynamic keys
-                                <TimeInput name={`itineraries.${index}.${mode}`} control={control} />
+                                <TimeInput name={`itineraries.${index}.${mode.id}`} control={control} />
                             ) : (
                                 <Input
                                     autoComplete="off"
@@ -153,7 +159,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                                     step={0.1}
                                     size="2xs"
                                     // @ts-expect-error: dynamic keys
-                                    {...register(`itineraries.${index}.${mode}`, { valueAsNumber: true })}
+                                    {...register(`itineraries.${index}.${mode.id}`, { valueAsNumber: true })}
                                 />
                             )}
                         </Field.Root>
@@ -162,12 +168,12 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
 
                 {/* Total (rowHours) */}
                 <GridItem>
-                    <Field.Root invalid={isBoat(vehicle) && rowHours != null && Math.round(rowHours * 60) % 6 !== 0}>
+                    <Field.Root invalid={isBoat(vehicleConfig) && rowHours != null && Math.round(rowHours * 60) % 6 !== 0}>
                         <Input
                             disabled
                             size="2xs"
                             variant="subtle"
-                            value={isBoat(vehicle) ? decimalToTimeString(rowHours) : Math.round(rowHours)}
+                            value={isBoat(vehicleConfig) ? decimalToTimeString(rowHours) : Math.round(rowHours)}
                         />
                     </Field.Root>
                 </GridItem>
@@ -184,7 +190,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                     </Text>
                 </GridItem>
 
-                {config.type === 'boat' ? (
+                {isBoat(vehicleConfig) ? (
                     <>
                         <GridItem alignSelf="center">
                             <Badge colorPalette="purple" size="lg">

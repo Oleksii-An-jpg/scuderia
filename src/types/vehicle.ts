@@ -1,70 +1,67 @@
-export enum Vehicle {
-    MAMBA = 'Mamba',
-    KMAR = 'KMAR',
-    F250 = 'F250',
-    MASTER = 'Master'
-}
+import { Timestamp } from "firebase/firestore";
+
+// Vehicle is now just a string (vehicle ID from Firestore)
+export type Vehicle = string;
 
 export type VehicleType = 'boat' | 'car';
+export type VehicleUnit = 'hours' | 'km';
 
-type BoatConfig = {
-    type: 'boat';
-    speedModes: readonly string[];
-    rates: Record<string, number>;
-    labels: Record<string, string>;
-    unit: 'hours';
+export type VehicleMode = {
+    id: string;
+    label: string;
+    rate: number;
+    order: number;
 }
 
-type CarConfig = {
-    type: 'car';
-    terrainModes: readonly string[];
-    rates: Record<string, number>;
-    labels: Record<string, string>;
-    unit: 'km';
+export type VehicleConfig = {
+    id: string;
+    name: string;
+    type: VehicleType;
+    unit: VehicleUnit;
+    modes: VehicleMode[];
+    active: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-export type VehicleConfig = BoatConfig | CarConfig;
+// Firestore version
+export type FirestoreVehicle<T = Timestamp> = Omit<VehicleConfig, 'id' | 'createdAt' | 'updatedAt'> & {
+    createdAt: T;
+    updatedAt: T;
+}
 
-export const VEHICLE_CONFIG: Record<Vehicle, VehicleConfig> = {
-    [Vehicle.MAMBA]: {
-        type: 'boat',
-        speedModes: ['hh', 'mh', 'sh', 'ph'],
-        rates: { hh: 6.3, mh: 31.2, sh: 137, ph: 253 },
-        labels: { hh: 'ХХ', mh: 'МХ', sh: 'СХ', ph: 'ПХ' },
-        unit: 'hours'
-    },
-    [Vehicle.KMAR]: {
-        type: 'boat',
-        speedModes: ['hh', 'mh', 'sh'],
-        rates: { hh: 5.5, mh: 54.7, sh: 199 },
-        labels: { hh: 'ХХ', mh: 'МХ', sh: 'СХ' },
-        unit: 'hours'
-    },
-    [Vehicle.F250]: {
-        type: 'car',
-        terrainModes: ['t', '5%', '10%', '15%', '4x4'],
-        rates: { t: 0.229, '5%': 0.283, '10%': 0.297, '15%': 0.31, '4x4': 0.337 },
-        labels: { t: 'Траса', '5%': '5%', '10%': '10%', '15%': '15%', '4x4': '4x4' },
-        unit: 'km'
-    },
-    [Vehicle.MASTER]: {
-        type: 'car',
-        terrainModes: ['t', '5%', '10%', '15%', '4x4'],
-        rates: { t: 0.102, '5%': 0.126, '10%': 0.132, '15%': 0.138, '4x4': 0.23 },
-        labels: { t: 'Траса', '5%': '5%', '10%': '10%', '15%': '15%', '4x4': '4x4' },
-        unit: 'km'
+// Serializable version for SSR
+export type SerializableVehicle = Omit<VehicleConfig, 'createdAt' | 'updatedAt'> & {
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Helper functions
+export function getModes(vehicle: VehicleConfig): VehicleMode[] {
+    return [...vehicle.modes].sort((a, b) => a.order - b.order);
+}
+
+export function isBoat(vehicleOrConfig: Vehicle | VehicleConfig, configs?: VehicleConfig[]): boolean {
+    if (typeof vehicleOrConfig === 'string') {
+        // It's a vehicle ID, need configs
+        if (!configs) throw new Error('Vehicle configs required when passing vehicle ID');
+        const config = configs.find(c => c.id === vehicleOrConfig);
+        return config?.type === 'boat';
     }
-} as const;
-
-export function getModes(vehicle: Vehicle): readonly string[] {
-    const config = VEHICLE_CONFIG[vehicle];
-    return config.type === 'boat' ? config.speedModes : config.terrainModes;
+    return vehicleOrConfig.type === 'boat';
 }
 
-export function isBoat(vehicle: Vehicle): boolean {
-    return VEHICLE_CONFIG[vehicle].type === 'boat';
+export function isCar(vehicleOrConfig: Vehicle | VehicleConfig, configs?: VehicleConfig[]): boolean {
+    if (typeof vehicleOrConfig === 'string') {
+        if (!configs) throw new Error('Vehicle configs required when passing vehicle ID');
+        const config = configs.find(c => c.id === vehicleOrConfig);
+        return config?.type === 'car';
+    }
+    return vehicleOrConfig.type === 'car';
 }
 
-export function isCar(vehicle: Vehicle): boolean {
-    return VEHICLE_CONFIG[vehicle].type === 'car';
+export function getVehicleConfig(vehicleId: Vehicle, configs: VehicleConfig[]): VehicleConfig {
+    const config = configs.find(c => c.id === vehicleId);
+    if (!config) throw new Error(`Vehicle config not found for: ${vehicleId}`);
+    return config;
 }

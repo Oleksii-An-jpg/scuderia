@@ -1,20 +1,23 @@
+// src/lib/store.ts
+
 import { create } from 'zustand';
 import { RoadList, CalculatedRoadList } from '@/types/roadList';
-import { Vehicle } from '@/types/vehicle';
+import { Vehicle, VehicleConfig } from '@/types/vehicle';
 import { getAllRoadLists, upsertRoadList, deleteRoadList } from '@/lib/firebase';
 import { calculateRoadListChain } from '@/lib/calculations';
+import { useVehicleStore } from '@/lib/vehicleStore';
 
 type StoreState = {
     roadLists: RoadList[];
     loading: boolean;
-    selectedVehicle: Vehicle;
+    selectedVehicle: Vehicle | null;
     // Cache for calculated results per vehicle
     calculatedCache: Record<Vehicle, CalculatedRoadList[]>;
 }
 
 type StoreActions = {
     fetchAll: () => Promise<void>;
-    hydrate: (roadLists: RoadList[]) => void;
+    hydrate: (roadLists: RoadList[], vehicle?: string) => void;
     upsert: (roadList: RoadList) => Promise<void>;
     delete: (id: string, vehicle: Vehicle) => Promise<void>;
     setSelectedVehicle: (vehicle: Vehicle) => void;
@@ -24,33 +27,27 @@ type StoreActions = {
     getById: (id: string) => RoadList | undefined;
 }
 
-function calculateAllCaches(roadLists: RoadList[]): Record<Vehicle, CalculatedRoadList[]> {
-    return {
-        [Vehicle.MAMBA]: calculateRoadListChain(
-            roadLists.filter(rl => rl.vehicle === Vehicle.MAMBA).sort((a, b) => a.end.getTime() - b.end.getTime())
-        ),
-        [Vehicle.KMAR]: calculateRoadListChain(
-            roadLists.filter(rl => rl.vehicle === Vehicle.KMAR).sort((a, b) => a.end.getTime() - b.end.getTime())
-        ),
-        [Vehicle.F250]: calculateRoadListChain(
-            roadLists.filter(rl => rl.vehicle === Vehicle.F250).sort((a, b) => a.end.getTime() - b.end.getTime())
-        ),
-        [Vehicle.MASTER]: calculateRoadListChain(
-            roadLists.filter(rl => rl.vehicle === Vehicle.MASTER).sort((a, b) => a.end.getTime() - b.end.getTime())
-        ),
-    };
+function calculateAllCaches(roadLists: RoadList[], vehicleConfigs: VehicleConfig[]): Record<Vehicle, CalculatedRoadList[]> {
+    const result: Record<Vehicle, CalculatedRoadList[]> = {};
+
+    vehicleConfigs.forEach(vehicleConfig => {
+        const vehicleRoadLists = roadLists
+            .filter(rl => {
+                return rl.vehicle === vehicleConfig.id
+            })
+            .sort((a, b) => a.end.getTime() - b.end.getTime());
+
+        result[vehicleConfig.id] = calculateRoadListChain(vehicleRoadLists, vehicleConfigs);
+    });
+
+    return result;
 }
 
 export const useStore = create<StoreState & StoreActions>((set, get) => ({
     roadLists: [],
     loading: false,
-    selectedVehicle: Vehicle.MAMBA,
-    calculatedCache: {
-        [Vehicle.MAMBA]: [],
-        [Vehicle.KMAR]: [],
-        [Vehicle.F250]: [],
-        [Vehicle.MASTER]: [],
-    },
+    selectedVehicle: null,
+    calculatedCache: {},
 
     fetchAll: async () => {
         set({ loading: true });
@@ -64,9 +61,14 @@ export const useStore = create<StoreState & StoreActions>((set, get) => ({
         }
     },
 
-    hydrate: (roadLists: RoadList[]) => {
-        const calculatedCache = calculateAllCaches(roadLists);
-        set({ roadLists, calculatedCache });
+    hydrate: (roadLists: RoadList[], vehicle) => {
+        const vehicleConfigs = useVehicleStore.getState().vehicles;
+        const calculatedCache = calculateAllCaches(roadLists, vehicleConfigs);
+
+        // Set first available vehicle as selected if none selected
+        const selectedVehicle = get().selectedVehicle || vehicle || vehicleConfigs[0]?.id || null;
+
+        set({ roadLists, calculatedCache, selectedVehicle });
     },
 
     upsert: async (roadList) => {

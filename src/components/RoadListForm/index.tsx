@@ -1,12 +1,15 @@
+// src/components/RoadListForm/index.tsx
+
 'use client';
 import { FC, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { Button, Grid, GridItem, Heading, HStack, Separator, Text, VStack } from '@chakra-ui/react';
 import { BiPlus } from 'react-icons/bi';
-import {Itinerary, RoadList} from '@/types/roadList';
-import {VEHICLE_CONFIG, getModes, isBoat} from '@/types/vehicle';
+import { Itinerary, RoadList } from '@/types/roadList';
+import { getModes, isBoat } from '@/types/vehicle';
 import { calculateRoadList } from '@/lib/calculations';
 import { useStore } from '@/lib/store';
+import { useVehicleStore, selectVehicleById } from '@/lib/vehicleStore';
 import RoadListHeader from '@/components/RoadListHeader';
 import ItineraryRow from '@/components/ItineraryRow';
 import Summary from '@/components/Summary';
@@ -19,8 +22,14 @@ type Props = {
 
 const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     const upsert = useStore(state => state.upsert);
-    const config = VEHICLE_CONFIG[roadList.vehicle];
-    const modes = getModes(roadList.vehicle);
+
+    const vehicleConfig = useVehicleStore(state => selectVehicleById(state, roadList.vehicle));
+
+    if (!vehicleConfig) {
+        return <div>Vehicle configuration not found</div>;
+    }
+
+    const modes = getModes(vehicleConfig);
 
     const methods = useForm<RoadList>({
         defaultValues: roadList,
@@ -44,15 +53,15 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         itineraries,
         startFuel,
         startHours,
-    }), [itinerariesKey, startFuel, startHours, roadList]);
+    }), [itinerariesKey, startFuel, typeof startHours === 'object' ? startHours.left : startHours, typeof startHours === 'object' ? startHours.right : startHours, roadList]);
 
     // Now debounce the STABLE input
     const debouncedInput = useDebouncedValue(calculationInput, 200);
 
     // Calculate with debounced values
     const calculated = useMemo(() => {
-        return calculateRoadList(debouncedInput);
-    }, [debouncedInput]);
+        return calculateRoadList(debouncedInput, vehicleConfig);
+    }, [debouncedInput, vehicleConfig]);
 
     useEffect(() => {
         reset(roadList);
@@ -93,14 +102,14 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         // Add vehicle-specific fields
         modes.forEach(mode => {
             // @ts-expect-error: dynamic keys
-            newItinerary[mode] = null;
+            newItinerary[mode.id] = null;
         });
 
         append(newItinerary);
     };
 
     // Calculate grid columns: 3 base + modes + 7 additional
-    const totalColumns = 3 + modes.length + (isBoat(roadList.vehicle) ? 7 : 6);
+    const totalColumns = 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
 
     return (
         <FormProvider {...methods}>
@@ -115,7 +124,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </HStack>
 
                     <Grid
-                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, ${isBoat(roadList.vehicle) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(roadList.vehicle) ? 'min-content min-content auto' : 'min-content auto'}`}
+                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, ${isBoat(vehicleConfig) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(vehicleConfig) ? 'min-content min-content auto' : 'min-content auto'}`}
                         gap={2}
                     >
                         {/* Column Headers */}
@@ -125,18 +134,18 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                             <GridItem><Heading size="sm">Бункеровка</Heading></GridItem>
 
                             {modes.map(mode => (
-                                <GridItem key={mode}>
-                                    <Heading size="sm">{config.labels[mode]}</Heading>
+                                <GridItem key={mode.id}>
+                                    <Heading size="sm">{mode.label}</Heading>
                                 </GridItem>
                             ))}
 
                             <GridItem><Heading size="sm">Усього</Heading></GridItem>
                             <GridItem><Heading size="sm">Розхід</Heading></GridItem>
                             <GridItem><Heading size="sm">Залишок</Heading></GridItem>
-                            {config.type === 'boat' ? (
+                            {isBoat(vehicleConfig) ? (
                                 <>
-                                    <GridItem><Heading size="sm">Л двигун</Heading></GridItem>
-                                    <GridItem><Heading size="sm">П двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm" className="whitespace-nowrap">Л двигун</Heading></GridItem>
+                                    <GridItem><Heading size="sm" className="whitespace-nowrap">П двигун</Heading></GridItem>
                                 </>
                             ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
                             <GridItem>

@@ -1,3 +1,5 @@
+// src/components/RoadListHeader/index.tsx
+
 'use client';
 import { FC } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
@@ -5,6 +7,7 @@ import { Field, Heading, HStack, Input, VStack } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
 import { RoadList } from '@/types/roadList';
 import { Vehicle, isBoat } from '@/types/vehicle';
+import {selectVehicleById, useVehicleStore} from '@/lib/vehicleStore';
 import 'react-datepicker/dist/react-datepicker.css';
 
 type Props = {
@@ -13,7 +16,10 @@ type Props = {
 
 const RoadListHeader: FC<Props> = ({ vehicle }) => {
     const { control, register } = useFormContext<RoadList>();
-    const isBoatVehicle = isBoat(vehicle);
+    const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
+    if (!vehicleConfig) return null;
+
+    const isBoatVehicle = isBoat(vehicleConfig);
 
     return (
         <VStack alignItems="stretch" gap={2}>

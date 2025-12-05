@@ -1,6 +1,6 @@
 // src/app/page.tsx
 
-import {adminAuth, getAllRoadListsServer, getAllVehiclesServer} from '@/lib/firebaseAdmin';
+import {adminAuth, getAllRoadListsServer, getAllVehiclesServer, getUser} from '@/lib/firebaseAdmin';
 import StoreProvider from '@/components/StoreProvider';
 import VehicleStoreProvider from '@/components/VehicleStoreProvider';
 import RoadLists from '@/components/RoadLists';
@@ -30,7 +30,15 @@ export default async function Page({
     if (sessionCookie) {
         try {
             const decoded = await adminAuth.verifySessionCookie(sessionCookie.value, true);
-            role = decoded.role
+
+            if (decoded.role == null) {
+                const user = await getUser(decoded.uid);
+                if (user.customClaims?.role != null) {
+                    role = user.customClaims?.role;
+                }
+            } else {
+                role = decoded.role
+            }
         } catch {
             console.error('Could not verify session');
         }

@@ -121,6 +121,10 @@ export async function getAllUsers() {
     return users;
 }
 
+export async function getUser(uid: string): Promise<UserRecord> {
+    return adminAuth.getUser(uid);
+}
+
 // export async function upsertVehicle(db: Firestore = adminDb): Promise<SerializableVehicle> {
 //     const collection = adminDb.collection('vehicles').withConverter(new VehicleConverter());
 //     const doc = typeof data.id === 'string' && await collection.doc(data.id).get();

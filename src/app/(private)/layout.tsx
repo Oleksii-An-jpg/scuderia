@@ -1,6 +1,6 @@
 'use server'
 
-import {adminAuth} from "@/lib/firebaseAdmin";
+import {adminAuth, getUser} from "@/lib/firebaseAdmin";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {ReactNode} from "react";
@@ -15,7 +15,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
     try {
         const decoded = await adminAuth.verifySessionCookie(sessionCookie.value, true);
-        if (decoded.role !== 'admin') redirect("/403");
+        if (decoded.role == null) {
+            const user = await getUser(decoded.uid);
+            if (user.customClaims?.role != null) {
+                const role = user.customClaims?.role;
+
+                if (role !== 'admin') {
+                    redirect("/403")
+                }
+            }
+        } else if (decoded.role !== 'admin') {
+            redirect("/403")
+        }
     } catch {
         redirect("/auth");
     }

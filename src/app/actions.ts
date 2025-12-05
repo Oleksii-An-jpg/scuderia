@@ -20,6 +20,8 @@ export async function createSession(token: string) {
 
     if (decoded.role === 'admin') {
         redirect('/admin')
+    } else {
+        redirect('/')
     }
 }
 

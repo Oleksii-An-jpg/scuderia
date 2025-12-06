@@ -33,7 +33,7 @@ const Summary: FC<Props> = ({ calculated, vehicle }) => {
     return (
         <>
             {/* Label at the 3rd column (after date, br, fuel) */}
-            <GridItem colStart={3}>
+            <GridItem colStart={4}>
                 <Heading size="sm">Разом:</Heading>
             </GridItem>
 

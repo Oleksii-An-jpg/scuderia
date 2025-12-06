@@ -1,10 +1,13 @@
 // src/components/RoadListForm/index.tsx
 
 'use client';
-import { FC, useEffect, useMemo } from 'react';
+import {FC, PropsWithChildren, useEffect, useMemo} from 'react';
+import {DndContext, closestCenter, UniqueIdentifier} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
-import { Button, Grid, GridItem, Heading, HStack, Separator, Text, VStack } from '@chakra-ui/react';
-import { BiPlus } from 'react-icons/bi';
+import {Button, Grid, GridItem, Heading, HStack, IconButton, Separator, Text, VStack} from '@chakra-ui/react';
+import {BiPlus, BiMenu} from 'react-icons/bi';
 import { Itinerary, RoadList } from '@/types/roadList';
 import { getModes, isBoat } from '@/types/vehicle';
 import { calculateRoadList } from '@/lib/calculations';
@@ -14,10 +17,37 @@ import RoadListHeader from '@/components/RoadListHeader';
 import ItineraryRow from '@/components/ItineraryRow';
 import Summary from '@/components/Summary';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import type {DragEndEvent} from "@dnd-kit/core/dist/types";
 
 type Props = {
     roadList: RoadList;
     onClose: () => void;
+}
+
+type SortableItemProps = PropsWithChildren<{
+  id: UniqueIdentifier;
+  index: number;
+    totalColumns: number;
+}>
+
+const SortableItem: FC<SortableItemProps> = ({ id, children, totalColumns }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <Grid ref={setNodeRef} style={style} templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
+            <GridItem alignSelf="center">
+                <IconButton size="xs" variant="ghost" cursor="move" {...attributes} {...listeners}>
+                    <BiMenu />
+                </IconButton>
+            </GridItem>
+            {children}
+        </Grid>
+    );
 }
 
 const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
@@ -32,10 +62,19 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     });
 
     const { control, handleSubmit, reset, watch } = methods;
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, move } = useFieldArray({
         control,
         name: 'itineraries'
     });
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over?.id && active.id !== over?.id) {
+            const oldIndex = fields.findIndex((field) => field.id === active.id);
+            const newIndex = fields.findIndex((field) => field.id === over.id);
+            move(oldIndex, newIndex); // Update react-hook-form's state
+        }
+    };
 
     // Watch form values
     const itineraries = watch('itineraries');
@@ -105,7 +144,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     };
 
     // Calculate grid columns: 3 base + modes + 7 additional
-    const totalColumns = 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
+    const totalColumns = 1 + 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
 
     return (
         <FormProvider {...methods}>
@@ -120,12 +159,12 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </HStack>
 
                     <Grid
-                        templateColumns={`repeat(3, 6em) repeat(${modes.length}, ${isBoat(vehicleConfig) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(vehicleConfig) ? 'min-content min-content auto' : 'min-content auto'}`}
+                        templateColumns={`min-content repeat(3, 6em) repeat(${modes.length}, ${isBoat(vehicleConfig) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(vehicleConfig) ? 'min-content min-content auto' : 'min-content auto'}`}
                         gap={2}
                     >
                         {/* Column Headers */}
                         <Grid templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
-                            <GridItem><Heading size="sm">Дата</Heading></GridItem>
+                            <GridItem colStart={2}><Heading size="sm">Дата</Heading></GridItem>
                             <GridItem><Heading size="sm">БР</Heading></GridItem>
                             <GridItem><Heading size="sm">Бункеровка</Heading></GridItem>
 
@@ -150,17 +189,23 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                             <GridItem><Heading size="sm">Коментар</Heading></GridItem>
                         </Grid>
 
-                        {/* Itinerary Rows */}
-                        {fields.map((field, index) => (
-                            <ItineraryRow
-                                key={field.id}
-                                index={index}
-                                vehicle={roadList.vehicle}
-                                calculated={calculated.itineraries[index]}
-                                onRemove={() => remove(index)}
-                                isLast={index === fields.length - 1}
-                            />
-                        ))}
+                        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={fields} strategy={verticalListSortingStrategy}>
+                                {/* Itinerary Rows */}
+                                {fields.map((field, index) => (
+                                    <SortableItem totalColumns={totalColumns} key={field.id} id={field.id} index={index}>
+                                        <ItineraryRow
+                                            key={field.id}
+                                            index={index}
+                                            vehicle={roadList.vehicle}
+                                            calculated={calculated.itineraries[index]}
+                                            onRemove={() => remove(index)}
+                                            isLast={index === fields.length - 1}
+                                        />
+                                    </SortableItem>
+                                ))}
+                            </SortableContext>
+                        </DndContext>
 
                         {/* Summary Row */}
                         <Summary calculated={calculated} vehicle={roadList.vehicle} />

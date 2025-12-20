@@ -147,7 +147,7 @@ const Vehicles: FC<VehiclesProps> = (props) => {
             enableSorting: false,
             cell: info => {
                 return <HStack>
-                    <Button size="xs" onClick={() => {
+                    <Button variant="outline" size="xs" onClick={() => {
                         const vehicle = vehicles.find(({ id }) => id === info.getValue())
 
                         if (vehicle) {

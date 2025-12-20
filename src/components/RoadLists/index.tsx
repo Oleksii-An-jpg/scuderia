@@ -11,7 +11,7 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink
+    Link as ChakraLink, Box
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -24,6 +24,7 @@ import { db } from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
 import {BiAnchor, BiUser} from "react-icons/bi";
+import Image from "next/image";
 
 type RoadListProps = {
     role?: string;
@@ -166,7 +167,10 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         <VStack alignItems="stretch">
             <Card.Root>
                 <Card.Header>
-                    <HStack justifyContent="space-between">
+                    <HStack justifyContent="space-between" className="relative pl-18!">
+                        <Box className="absolute left-0 top-1/2 -translate-y-1/2">
+                            <Image src="/ornament.png" alt="ornament" width={60} height={60} />
+                        </Box>
                         <Text>Дорожні листи</Text>
                         {role === 'admin' ? <Button colorPalette="yellow" asChild>
                             <ChakraLink asChild>

@@ -244,7 +244,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                     const model = info.row.original;
                     return (
                         <HStack justifyContent="flex-end">
-                            <Button size="xs" onClick={() => onOpen(model.id!)}>
+                            <Button variant="outline" size="xs" onClick={() => onOpen(model.id!)}>
                                 Переглянути
                             </Button>
                             <IconButton

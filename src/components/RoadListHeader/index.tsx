@@ -31,7 +31,6 @@ const RoadListHeader: FC<Props> = ({ vehicle }) => {
                         size="xs"
                         autoComplete="off"
                         type="number"
-                        step="1"
                         {...register('startFuel', { valueAsNumber: true })}
                     />
                 </Field.Root>

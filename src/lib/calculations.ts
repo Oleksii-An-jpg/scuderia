@@ -37,8 +37,8 @@ export function calculateRoadList(
         if (isBoat(vehicleConfig) && typeof cumulativeHours === 'object') {
             // For boats: both engines accumulate the same rowHours
             cumulativeHours = {
-                left: cumulativeHours.left + rowHours,
-                right: cumulativeHours.right + rowHours,
+                left: Math.round((cumulativeHours.left + rowHours) * 100) / 100,
+                right: Math.round((cumulativeHours.right + rowHours) * 100) / 100,
             };
         } else if (typeof cumulativeHours === 'number') {
             // For cars: simple addition

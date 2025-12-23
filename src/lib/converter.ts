@@ -12,7 +12,7 @@ export function firestoreToRoadList(data: FirestoreRoadList, id: string, vehicle
     return {
         vehicle: data.vehicle,
         roadListID: data.roadListID,
-        startFuel: data.startFuel,
+        startFuel: Math.round(data.startFuel),
         startHours: typeof data.startHours === 'object' ? {
             left: Math.round(data.startHours.left * 100) / 100,
             right: Math.round(data.startHours.right * 100) / 100,

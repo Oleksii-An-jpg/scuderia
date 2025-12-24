@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'leaflet.fullscreen/dist/Control.FullScreen.css';
 
 @layer base {
     /* Target the internal clock icon inside <input type="time"> */

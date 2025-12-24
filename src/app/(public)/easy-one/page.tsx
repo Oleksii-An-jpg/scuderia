@@ -1,4 +1,9 @@
-import Generator from "@/components/Generator";
+'use client';
+import dynamic from 'next/dynamic';
+
+const Generator = dynamic(() => import('../../../components/Generator'), {
+    ssr: false
+});
 
 export default function Page() {
     return <Generator />

@@ -10,9 +10,10 @@ import {
     VStack,
     Clipboard,
     InputGroup,
-    IconButton, Grid, GridItem, Box, HStack, FileUpload, Icon, useFileUploadContext
+    IconButton, Grid, GridItem, Box, HStack, FileUpload, Icon, useFileUploadContext, Switch
 } from "@chakra-ui/react";
-import {FormProvider, useFieldArray, useForm, useFormContext, UseFormRegister} from "react-hook-form";
+import {Controller, FormProvider, useFieldArray, useForm, useFormContext} from "react-hook-form";
+import { Tooltip } from '@/components/ui/tooltip'
 import {generateSurveyRoute, parseTargets, Target, WaypointData} from "@/lib/survey";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -108,6 +109,7 @@ type Values = {
     input: string;
     speed: number;
     route: string;
+    useBoxLeadins: boolean;
     waypoints: WaypointData[];
 }
 
@@ -142,7 +144,8 @@ const SurveyRouteGenerator: FC = () => {
     const methods = useForm<Values>({
         defaultValues: {
             speed: 2,
-            waypoints: []
+            waypoints: [],
+            useBoxLeadins: false
         }
     });
     const { register, control, watch, setValue, handleSubmit, reset, formState: { isDirty, isValid } } = methods;
@@ -294,7 +297,10 @@ const SurveyRouteGenerator: FC = () => {
                 <Heading>Survey Pattern Route Generator</Heading>
                 <FormProvider {...methods}>
                     <VStack gap={4} as="form" align="stretch" onSubmit={handleSubmit((data) => {
-                        const { output, waypoints } = generateSurveyRoute(data.contacts, data.speed);
+                        const { output, waypoints } = generateSurveyRoute(data.contacts, {
+                            speed: data.speed,
+                            useBoxLeadins: data.useBoxLeadins,
+                        });
                         setValue('route', output.join('\n'));
                         setValue('waypoints', waypoints);
                     })}>
@@ -337,10 +343,34 @@ const SurveyRouteGenerator: FC = () => {
                             <Box className="h-full min-h-64 w-1/2" ref={mapRef} overflow="hidden" />
                         </HStack>
 
-                        <Field.Root>
-                            <Field.Label>Vehicle Speed (m/s)</Field.Label>
-                            <Input type="number" {...register('speed', {valueAsNumber: true})} step="0.1" />
-                        </Field.Root>
+                        <HStack alignItems="center" gap={2}>
+                            <Field.Root>
+                                <Field.Label>Vehicle Speed (m/s)</Field.Label>
+                                <Input type="number" {...register('speed', {valueAsNumber: true})} step="0.1" />
+                            </Field.Root>
+                            <Controller
+                                name="useBoxLeadins"
+                                control={control}
+                                render={({ field }) => (
+                                    <Field.Root>
+                                        <Tooltip ids={{ trigger: 'id' }} content="We do our best trying to flatten sharp angles on a leadin waypoints so vehicle enters a survey track more or less stable">
+                                            <Switch.Root
+                                                ids={{ root: 'id' }}
+                                                name={field.name}
+                                                checked={field.value}
+                                                onCheckedChange={({ checked }) => field.onChange(checked)}
+                                            >
+                                                <Switch.HiddenInput onBlur={field.onBlur} />
+                                                <Switch.Control />
+                                                <Switch.Label>
+                                                    Use SMART lead-ins (experimental)
+                                                </Switch.Label>
+                                            </Switch.Root>
+                                        </Tooltip>
+                                    </Field.Root>
+                                )}
+                            />
+                        </HStack>
 
                         <Button type="submit" colorPalette="pink" disabled={!isDirty || !isValid}>Generate Routes</Button>
 

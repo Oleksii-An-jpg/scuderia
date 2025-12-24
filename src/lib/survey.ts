@@ -9,6 +9,12 @@ export interface Target {
     bearing: number;
 }
 
+export interface SurveyOptions {
+    speed: number;
+    useBoxLeadins?: boolean;
+    boxLeadinAngleThreshold?: number;
+}
+
 interface Coordinate {
     lat: number;
     lon: number;
@@ -233,7 +239,8 @@ const calculateTrackOffsets = (numTracks: number, spacing: number): number[] => 
     return tracks;
 };
 
-export const generateSurveyRoute = (targets: Target[], speed: number): { output: string[], waypoints: WaypointData[] } => {
+export const generateSurveyRoute = (targets: Target[], options: SurveyOptions): { output: string[], waypoints: WaypointData[] } => {
+    const { speed, useBoxLeadins = false, boxLeadinAngleThreshold = 45 } = options;
     const waypoints: WaypointData[] = [];
     let lastPoint: Coordinate | null = null;
     const trackLength = 200;
@@ -271,6 +278,8 @@ export const generateSurveyRoute = (targets: Target[], speed: number): { output:
 
             if (i === 0) {
                 const leadinTag = `leadin${letter}`;
+                const trackBrg = bearing(seg.start.lat, seg.start.lon, seg.end.lat, seg.end.lon);
+
                 if (idx === 0) {
                     waypoints.push({
                         tag: leadinTag,
@@ -283,18 +292,86 @@ export const generateSurveyRoute = (targets: Target[], speed: number): { output:
                 } else {
                     const dist = distance(lastPoint!.lat, lastPoint!.lon, seg.start.lat, seg.start.lon);
                     const brg = bearing(lastPoint!.lat, lastPoint!.lon, seg.start.lat, seg.start.lon);
-                    const time = Math.round(dist / speed);
-                    waypoints.push({
-                        tag: leadinTag,
-                        lat: formatLat(seg.start.lat),
-                        lon: formatLon(seg.start.lon),
-                        latNum: seg.start.lat,
-                        lonNum: seg.start.lon,
-                        bearing: brg,
-                        time,
-                        distance: dist,
-                        isLeadin: true
-                    });
+
+                    // Calculate angle difference between approach and track
+                    let angleDiff = trackBrg - brg;
+                    if (angleDiff > 180) angleDiff -= 360;
+                    if (angleDiff < -180) angleDiff += 360;
+
+                    // If box leadins enabled and approach angle is too sharp, add box pattern
+                    if (useBoxLeadins && Math.abs(angleDiff) > boxLeadinAngleThreshold) {
+                        console.log(321);
+                        // Create a box approach similar to turn pattern
+                        const approachDist = turnExtension;
+                        const reverseBrg = (trackBrg + 180) % 360;
+
+                        // Point 1: approach from behind the track
+                        const p1 = destination(seg.start.lat, seg.start.lon, approachDist, reverseBrg);
+
+                        // Point 2: offset perpendicular to track
+                        const perpOffset = angleDiff > 0 ? -90 : 90;
+                        const perpBrg = (trackBrg + perpOffset + 360) % 360;
+                        const p2 = destination(p1.lat, p1.lon, approachDist, perpBrg);
+
+                        // Point 3: move towards the approach line from current position
+                        const d1 = distance(lastPoint!.lat, lastPoint!.lon, p2.lat, p2.lon);
+                        const b1 = bearing(lastPoint!.lat, lastPoint!.lon, p2.lat, p2.lon);
+
+                        waypoints.push({
+                            tag: `${leadinTag}_1`,
+                            lat: formatLat(p2.lat),
+                            lon: formatLon(p2.lon),
+                            latNum: p2.lat,
+                            lonNum: p2.lon,
+                            bearing: b1,
+                            time: Math.round(d1 / speed),
+                            distance: d1,
+                            isLeadin: true
+                        });
+
+                        const d2 = distance(p2.lat, p2.lon, p1.lat, p1.lon);
+                        const b2 = bearing(p2.lat, p2.lon, p1.lat, p1.lon);
+
+                        waypoints.push({
+                            tag: `${leadinTag}_2`,
+                            lat: formatLat(p1.lat),
+                            lon: formatLon(p1.lon),
+                            latNum: p1.lat,
+                            lonNum: p1.lon,
+                            bearing: b2,
+                            time: Math.round(d2 / speed),
+                            distance: d2,
+                            isLeadin: true
+                        });
+
+                        const d3 = distance(p1.lat, p1.lon, seg.start.lat, seg.start.lon);
+
+                        waypoints.push({
+                            tag: `${leadinTag}_3`,
+                            lat: formatLat(seg.start.lat),
+                            lon: formatLon(seg.start.lon),
+                            latNum: seg.start.lat,
+                            lonNum: seg.start.lon,
+                            bearing: trackBrg,
+                            time: Math.round(d3 / speed),
+                            distance: d3,
+                            isLeadin: true
+                        });
+                    } else {
+                        // Straight approach - angle is acceptable
+                        const time = Math.round(dist / speed);
+                        waypoints.push({
+                            tag: leadinTag,
+                            lat: formatLat(seg.start.lat),
+                            lon: formatLon(seg.start.lon),
+                            latNum: seg.start.lat,
+                            lonNum: seg.start.lon,
+                            bearing: brg,
+                            time,
+                            distance: dist,
+                            isLeadin: true
+                        });
+                    }
                 }
             }
 
@@ -407,7 +484,7 @@ export const generateSurveyRoute = (targets: Target[], speed: number): { output:
 
     waypoints.forEach((wp) => {
         if (wp.isLeadin) {
-            const newPattern = wp.tag.replace('leadin', '');
+            const newPattern = wp.tag.replace(/leadin/, '').replace(/_\d+$/, '');
             if (currentPattern && newPattern !== currentPattern) {
                 output.push('');
             }

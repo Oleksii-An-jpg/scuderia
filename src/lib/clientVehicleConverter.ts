@@ -13,6 +13,7 @@ export function firestoreToVehicle(data: FirestoreVehicle, id: string): VehicleC
         active: data.active,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
+        fuel: data.fuel,
     };
 }
 

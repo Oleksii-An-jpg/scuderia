@@ -192,13 +192,28 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             params.set('vehicle', e.value);
                             window.history.replaceState({}, '', `${pathname}?${params.toString()}`)
                         }}
+                        css={{
+                            '--tabs-height': 'sizes.16'
+                        }}
                     >
                         <Tabs.List>
-                            {vehicles.map(vehicle => (
-                                <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
-                                    {vehicle.name}
-                                </Tabs.Trigger>
-                            ))}
+                            {vehicles.map(vehicle => {
+                                const roadLists = getByVehicle(vehicle.id);
+                                const last = roadLists[roadLists.length - 1];
+                                const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
+                                const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0
+                                return (
+                                    <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
+                                        <VStack>
+                                            <Text as="b">{vehicle.name} ({vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'})</Text>
+                                            <HStack>
+                                                <Text>{remainingFuel} л.</Text>
+                                                <Text>{cumulativeHours}</Text>
+                                            </HStack>
+                                        </VStack>
+                                    </Tabs.Trigger>
+                                )
+                            })}
                         </Tabs.List>
 
                         {vehicles.map(vehicle => (

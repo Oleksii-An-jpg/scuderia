@@ -5,6 +5,7 @@ export type Vehicle = string;
 
 export type VehicleType = 'boat' | 'car';
 export type VehicleUnit = 'hours' | 'km';
+export type VehicleFuel = 'diesel' | 'gasoline'
 
 export type VehicleMode = {
     id: string;
@@ -22,6 +23,7 @@ export type VehicleConfig = {
     active: boolean;
     createdAt: Date;
     updatedAt: Date;
+    fuel: VehicleFuel;
 }
 
 // Firestore version

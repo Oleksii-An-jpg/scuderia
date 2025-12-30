@@ -14,6 +14,7 @@ export function firestoreToVehicle(data: FirestoreVehicle, id: string): VehicleC
         active: data.active,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
+        fuel: data.fuel,
     };
 }
 
@@ -27,6 +28,7 @@ export function vehicleToFirestore(vehicle: VehicleConfig): FirestoreVehicle<Tim
         active: vehicle.active,
         createdAt: Timestamp.fromDate(new Date(vehicle.createdAt)),
         updatedAt: Timestamp.fromDate(new Date(vehicle.updatedAt)),
+        fuel: vehicle.fuel,
     };
 }
 

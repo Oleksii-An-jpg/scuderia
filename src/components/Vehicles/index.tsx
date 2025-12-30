@@ -274,7 +274,7 @@ const Vehicles: FC<VehiclesProps> = (props) => {
                                     <VStack align="stretch">
                                         <Field.Root orientation="horizontal" required>
                                             <Field.Label>
-                                                Ідентифікатор
+                                                Ідентифікатор (унікальний)
                                                 <Field.RequiredIndicator />
                                             </Field.Label>
                                             <Input
@@ -287,7 +287,7 @@ const Vehicles: FC<VehiclesProps> = (props) => {
                                         </Field.Root>
                                         <Field.Root orientation="horizontal" required>
                                             <Field.Label>
-                                                Назва
+                                                Назва (може дублюватись)
                                                 <Field.RequiredIndicator />
                                             </Field.Label>
                                             <Input
@@ -323,6 +323,21 @@ const Vehicles: FC<VehiclesProps> = (props) => {
                                                 })}>
                                                     <option value="km">км</option>
                                                     <option value="hours">год</option>
+                                                </NativeSelect.Field>
+                                                <NativeSelect.Indicator />
+                                            </NativeSelect.Root>
+                                        </Field.Root>
+                                        <Field.Root orientation="horizontal" required>
+                                            <Field.Label>
+                                                Тип пального
+                                                <Field.RequiredIndicator />
+                                            </Field.Label>
+                                            <NativeSelect.Root>
+                                                <NativeSelect.Field {...register('fuel', {
+                                                    required: true
+                                                })}>
+                                                    <option value="gasoline">Бензин</option>
+                                                    <option value="diesel">Дизель</option>
                                                 </NativeSelect.Field>
                                                 <NativeSelect.Indicator />
                                             </NativeSelect.Root>

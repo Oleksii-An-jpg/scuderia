@@ -164,7 +164,9 @@ const SurveyRouteGenerator: FC = () => {
     };
     useEffect(() => {
         if (input) {
-            setValue('contacts', parseTargets(input))
+            setValue('contacts', parseTargets(input), {
+                shouldDirty: true
+            })
         }
     }, [input]);
 

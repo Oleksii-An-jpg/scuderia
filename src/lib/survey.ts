@@ -277,7 +277,7 @@ export const generateSurveyRoute = (targets: Target[], options: SurveyOptions): 
             const seg = trackSegments[i];
 
             if (i === 0) {
-                const leadinTag = `leadin${letter}`;
+                const leadinTag = `lead_${letter}`;
                 const trackBrg = bearing(seg.start.lat, seg.start.lon, seg.end.lat, seg.end.lon);
 
                 if (idx === 0) {
@@ -300,7 +300,6 @@ export const generateSurveyRoute = (targets: Target[], options: SurveyOptions): 
 
                     // If box leadins enabled and approach angle is too sharp, add box pattern
                     if (useBoxLeadins && Math.abs(angleDiff) > boxLeadinAngleThreshold) {
-                        console.log(321);
                         // Create a box approach similar to turn pattern
                         const approachDist = turnExtension;
                         const reverseBrg = (trackBrg + 180) % 360;
@@ -484,7 +483,7 @@ export const generateSurveyRoute = (targets: Target[], options: SurveyOptions): 
 
     waypoints.forEach((wp) => {
         if (wp.isLeadin) {
-            const newPattern = wp.tag.replace(/leadin/, '').replace(/_\d+$/, '');
+            const newPattern = wp.tag.replace(/lead/, '').replace(/_\d+$/, '');
             if (currentPattern && newPattern !== currentPattern) {
                 output.push('');
             }

@@ -7,7 +7,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import {Button, Grid, GridItem, Heading, HStack, IconButton, Separator, Text, VStack} from '@chakra-ui/react';
-import {BiPlus, BiMenu} from 'react-icons/bi';
+import {BiPlus, BiMenu, BiSolidWrench} from 'react-icons/bi';
 import { Itinerary, RoadList } from '@/types/roadList';
 import { getModes, isBoat } from '@/types/vehicle';
 import { calculateRoadList } from '@/lib/calculations';
@@ -120,7 +120,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         }
     };
 
-    const handleAppend = () => {
+    const handleAppend = (maintenance = false) => {
         const lastDate = fields.length > 0
             ? new Date(fields[fields.length - 1].date)
             : new Date();
@@ -132,6 +132,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
             br: null,
             fuel: null,
             comment: '',
+            maintenance
         };
 
         // Add vehicle-specific fields
@@ -212,8 +213,11 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </Grid>
 
                     <HStack>
-                        <Button colorPalette="blue" size="xs" onClick={handleAppend}>
+                        <Button colorPalette="blue" size="xs" onClick={() => handleAppend()}>
                             <BiPlus /> Додати запис
+                        </Button>
+                        <Button colorPalette="green" size="xs" onClick={() => handleAppend(true)}>
+                            <BiSolidWrench /> Додати ТО
                         </Button>
                     </HStack>
                 </VStack>

@@ -201,15 +201,22 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                 const roadLists = getByVehicle(vehicle.id);
                                 const last = roadLists[roadLists.length - 1];
                                 const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
-                                const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0
+                                const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0;
+                                const cumulativeHoursFromRecentMaintenance = last.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
+                                const cumulativeFuelFromRecentMaintenance = last.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
                                 return (
                                     <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
-                                        <VStack>
+                                        <VStack gap={0.5}>
                                             <Text as="b">{vehicle.name} ({vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'})</Text>
                                             <HStack>
                                                 <Text>{remainingFuel} л.</Text>
                                                 <Text>{cumulativeHours}</Text>
                                             </HStack>
+                                            {cumulativeHoursFromRecentMaintenance ? <HStack>
+                                                <Text>Після ТО:</Text>
+                                                <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
+                                                <Text>{cumulativeHoursFromRecentMaintenance}</Text>
+                                            </HStack> : null}
                                         </VStack>
                                     </Tabs.Trigger>
                                 )

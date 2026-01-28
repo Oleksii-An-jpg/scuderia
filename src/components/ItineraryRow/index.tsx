@@ -15,6 +15,7 @@ import {
     Textarea,
     FileUpload,
     useFileUploadContext,
+    Separator,
 } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
 import {BiTrash, BiUpload, BiX} from 'react-icons/bi';
@@ -66,7 +67,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
     const { control, register, watch, setValue } = useFormContext<RoadList>();
     const vehicleConfig = useVehicleStore(state => selectVehicleById(state, vehicle));
     const modes = getModes(vehicleConfig);
-    const files = watch(`itineraries.${index}.docs`);
+    const [files, maintenance] = watch([`itineraries.${index}.docs`, `itineraries.${index}.maintenance`]);
 
     useEffect(() => {
         async function parseDocs() {
@@ -96,170 +97,189 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
         <Controller name={`itineraries.${index}.docs`} control={control} render={({ field }) => <FileUpload.Root onFileChange={({ acceptedFiles }) => {
             field.onChange(acceptedFiles);
         }} acceptedFiles={files?.every(file => file instanceof File) ? files : []} maxFiles={Infinity} className={`!grid-cols-subgrid !grid`} gridColumn={`span ${totalColumns}`}>
-            <Grid templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
-                {/* Date */}
-                <GridItem>
-                    <Field.Root>
-                        <Controller
-                            name={`itineraries.${index}.date`}
-                            control={control}
-                            render={({ field }) => (
-                                <DatePicker
-                                    popperPlacement="top-end"
-                                    dateFormat="dd/MM/yyyy"
-                                    selected={field.value}
-                                    onChange={field.onChange}
-                                    customInput={<Input variant="subtle" name={field.name} size="2xs" />}
+            <Grid alignSelf="center" templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
+                <>
+                    {maintenance ? <GridItem className="col-span-full">
+                        <HStack>
+                            <Separator flex="1" />
+                            <Text flexShrink="0" as="b">Технічне обслуговування</Text>
+                            <Separator flex="1" />
+                            <IconButton
+                                onClick={onRemove}
+                                size="xs"
+                                colorPalette="red"
+                                variant="outline"
+                                aria-label="Видалити"
+                            >
+                                <BiTrash />
+                            </IconButton>
+                        </HStack>
+                    </GridItem> : <>
+                        {/* Date */}
+                        <GridItem>
+                            <Field.Root>
+                                <Controller
+                                    name={`itineraries.${index}.date`}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            popperPlacement="top-end"
+                                            dateFormat="dd/MM/yyyy"
+                                            selected={field.value}
+                                            onChange={field.onChange}
+                                            customInput={<Input variant="subtle" name={field.name} size="2xs" />}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                    </Field.Root>
-                </GridItem>
+                            </Field.Root>
+                        </GridItem>
 
-                {/* BR */}
-                <GridItem>
-                    <Field.Root>
-                        <Input
-                            autoComplete="off"
-                            type="number"
-                            min={0}
-                            step={1}
-                            size="2xs"
-                            {...register(`itineraries.${index}.br`, { valueAsNumber: true })}
-                        />
-                    </Field.Root>
-                </GridItem>
-
-                {/* Fuel */}
-                <GridItem>
-                    <Field.Root>
-                        <Input
-                            autoComplete="off"
-                            type="number"
-                            step={1}
-                            size="2xs"
-                            {...register(`itineraries.${index}.fuel`, { valueAsNumber: true })}
-                        />
-                    </Field.Root>
-                </GridItem>
-
-                {/* Dynamic mode fields */}
-                {modes.map(mode => (
-                    <GridItem key={mode.id}>
-                        <Field.Root>
-                            {isBoat(vehicleConfig) ? (
-                                // @ts-expect-error: dynamic keys
-                                <TimeInput name={`itineraries.${index}.${mode.id}`} control={control} />
-                            ) : (
+                        {/* BR */}
+                        <GridItem>
+                            <Field.Root>
                                 <Input
                                     autoComplete="off"
                                     type="number"
-                                    step={0.1}
+                                    min={0}
+                                    step={1}
                                     size="2xs"
-                                    // @ts-expect-error: dynamic keys
-                                    {...register(`itineraries.${index}.${mode.id}`, { valueAsNumber: true })}
+                                    {...register(`itineraries.${index}.br`, { valueAsNumber: true })}
                                 />
-                            )}
-                        </Field.Root>
-                    </GridItem>
-                ))}
-
-                {/* Total (rowHours) */}
-                <GridItem>
-                    <Field.Root invalid={isBoat(vehicleConfig) && rowHours != null && Math.round(rowHours * 60) % 6 !== 0}>
-                        <Input
-                            disabled
-                            size="2xs"
-                            variant="subtle"
-                            value={isBoat(vehicleConfig) ? decimalToTimeString(rowHours) : Math.round(rowHours)}
-                        />
-                    </Field.Root>
-                </GridItem>
-
-                {/* Consumed */}
-                <GridItem alignSelf="center">
-                    <Text textStyle="sm">{Math.round(rowConsumed)}</Text>
-                </GridItem>
-
-                {/* Cumulative Fuel */}
-                <GridItem alignSelf="center">
-                    <Text textStyle="sm" {...(isLast && { fontWeight: 'bold' })}>
-                        {Math.round(cumulativeFuel)}
-                    </Text>
-                </GridItem>
-
-                {isBoat(vehicleConfig) ? (
-                    <>
-                        <GridItem alignSelf="center">
-                            <Badge colorPalette="purple" size="lg">
-                                <Text fontWeight="bold">
-                                    {typeof cumulativeHours === 'object'
-                                        ? Math.round(cumulativeHours.left * 10) / 10
-                                        : Math.round(cumulativeHours * 10) / 10
-                                    }
-                                </Text>
-                            </Badge>
+                            </Field.Root>
                         </GridItem>
 
-                        {/* P Motor */}
-                        <GridItem alignSelf="center">
-                            <Badge colorPalette="purple" size="lg">
-                                <Text fontWeight="bold">
-                                    {typeof cumulativeHours === 'object'
-                                        ? Math.round(cumulativeHours.right * 10) / 10
-                                        : Math.round(cumulativeHours * 10) / 10
-                                    }
-                                </Text>
-                            </Badge>
+                        {/* Fuel */}
+                        <GridItem>
+                            <Field.Root>
+                                <Input
+                                    autoComplete="off"
+                                    type="number"
+                                    step={1}
+                                    size="2xs"
+                                    {...register(`itineraries.${index}.fuel`, { valueAsNumber: true })}
+                                />
+                            </Field.Root>
                         </GridItem>
-                    </>
-                ) : <GridItem>
-                    <GridItem alignSelf="center">
-                        <Badge colorPalette="purple" size="lg">
-                            <Text fontWeight="bold">
-                                {typeof cumulativeHours === 'object'
-                                    ? Math.round(cumulativeHours.right * 10) / 10
-                                    : Math.round(cumulativeHours * 10) / 10
-                                }
+
+                        {/* Dynamic mode fields */}
+                        {modes.map(mode => (
+                            <GridItem key={mode.id}>
+                                <Field.Root>
+                                    {isBoat(vehicleConfig) ? (
+                                        // @ts-expect-error: dynamic keys
+                                        <TimeInput name={`itineraries.${index}.${mode.id}`} control={control} />
+                                    ) : (
+                                        <Input
+                                            autoComplete="off"
+                                            type="number"
+                                            step={0.1}
+                                            size="2xs"
+                                            // @ts-expect-error: dynamic keys
+                                            {...register(`itineraries.${index}.${mode.id}`, { valueAsNumber: true })}
+                                        />
+                                    )}
+                                </Field.Root>
+                            </GridItem>
+                        ))}
+
+                        {/* Total (rowHours) */}
+                        <GridItem>
+                            <Field.Root invalid={isBoat(vehicleConfig) && rowHours != null && Math.round(rowHours * 60) % 6 !== 0}>
+                                <Input
+                                    disabled
+                                    size="2xs"
+                                    variant="subtle"
+                                    value={isBoat(vehicleConfig) ? decimalToTimeString(rowHours) : Math.round(rowHours)}
+                                />
+                            </Field.Root>
+                        </GridItem>
+
+                        {/* Consumed */}
+                        <GridItem alignSelf="center">
+                            <Text textStyle="sm">{Math.round(rowConsumed)}</Text>
+                        </GridItem>
+
+                        {/* Cumulative Fuel */}
+                        <GridItem alignSelf="center">
+                            <Text textStyle="sm" {...(isLast && { fontWeight: 'bold' })}>
+                                {Math.round(cumulativeFuel)}
                             </Text>
-                        </Badge>
-                    </GridItem>
-                </GridItem>}
+                        </GridItem>
 
-                <GridItem>
-                    <FileUpload.HiddenInput />
-                    <FileUpload.Trigger asChild>
-                        <IconButton variant="outline" size="xs">
-                            <BiUpload />
-                        </IconButton>
-                    </FileUpload.Trigger>
-                </GridItem>
-                <GridItem gridColumn="inherit" order={totalColumns + 1}>
-                    <FileUploadList />
-                </GridItem>
+                        {isBoat(vehicleConfig) ? (
+                            <>
+                                <GridItem alignSelf="center">
+                                    <Badge colorPalette="purple" size="lg">
+                                        <Text fontWeight="bold">
+                                            {typeof cumulativeHours === 'object'
+                                                ? Math.round(cumulativeHours.left * 10) / 10
+                                                : Math.round(cumulativeHours * 10) / 10
+                                            }
+                                        </Text>
+                                    </Badge>
+                                </GridItem>
 
-                {/* Comment & Delete */}
-                <GridItem>
-                    <HStack>
-                        <Field.Root>
-                            <Textarea
-                                maxH="2lh"
-                                resize="none"
-                                size="xs"
-                                {...register(`itineraries.${index}.comment`)}
-                            />
-                        </Field.Root>
-                        <IconButton
-                            onClick={onRemove}
-                            size="xs"
-                            colorPalette="red"
-                            variant="outline"
-                            aria-label="Видалити"
-                        >
-                            <BiTrash />
-                        </IconButton>
-                    </HStack>
-                </GridItem>
+                                {/* P Motor */}
+                                <GridItem alignSelf="center">
+                                    <Badge colorPalette="purple" size="lg">
+                                        <Text fontWeight="bold">
+                                            {typeof cumulativeHours === 'object'
+                                                ? Math.round(cumulativeHours.right * 10) / 10
+                                                : Math.round(cumulativeHours * 10) / 10
+                                            }
+                                        </Text>
+                                    </Badge>
+                                </GridItem>
+                            </>
+                        ) : <GridItem>
+                            <GridItem alignSelf="center">
+                                <Badge colorPalette="purple" size="lg">
+                                    <Text fontWeight="bold">
+                                        {typeof cumulativeHours === 'object'
+                                            ? Math.round(cumulativeHours.right * 10) / 10
+                                            : Math.round(cumulativeHours * 10) / 10
+                                        }
+                                    </Text>
+                                </Badge>
+                            </GridItem>
+                        </GridItem>}
+
+                        <GridItem>
+                            <FileUpload.HiddenInput />
+                            <FileUpload.Trigger asChild>
+                                <IconButton variant="outline" size="xs">
+                                    <BiUpload />
+                                </IconButton>
+                            </FileUpload.Trigger>
+                        </GridItem>
+                        <GridItem gridColumn="inherit" order={totalColumns + 1}>
+                            <FileUploadList />
+                        </GridItem>
+
+                        {/* Comment & Delete */}
+                        <GridItem>
+                            <HStack>
+                                <Field.Root>
+                                    <Textarea
+                                        maxH="2lh"
+                                        resize="none"
+                                        size="xs"
+                                        {...register(`itineraries.${index}.comment`)}
+                                    />
+                                </Field.Root>
+                                <IconButton
+                                    onClick={onRemove}
+                                    size="xs"
+                                    colorPalette="red"
+                                    variant="outline"
+                                    aria-label="Видалити"
+                                >
+                                    <BiTrash />
+                                </IconButton>
+                            </HStack>
+                        </GridItem>
+                    </>}
+                </>
             </Grid>
         </FileUpload.Root>} />
     );

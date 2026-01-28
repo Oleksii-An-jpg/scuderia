@@ -7,6 +7,7 @@ export type Itinerary = {
     fuel: number | null;
     comment?: string;
     docs?: (string | File)[];
+    maintenance?: boolean;
     // Dynamic fields for speed modes or terrain types
     // [key: string]: number | null | Date | string | undefined;
 }
@@ -54,6 +55,8 @@ export type CalculatedRoadList = RoadList & {
     cumulativeHours: EngineHours | number;
     cumulativeFuel: number;
     cumulativeReceivedFuel: number;
+    cumulativeHoursFromRecentMaintenance?: EngineHours | number;
+    cumulativeFuelFromRecentMaintenance?: number;
 }
 
 // Firestore converter types

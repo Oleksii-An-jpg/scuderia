@@ -12,6 +12,9 @@ export function calculateRoadList(
     let cumulativeHours: EngineHours | number = startHours ?? roadList.startHours;
     let cumulativeFuel = startFuel ?? roadList.startFuel;
     let cumulativeReceivedFuel = 0;
+    let cumulativeHoursFromRecentMaintenance: EngineHours | number = isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0;
+    let cumulativeFuelFromRecentMaintenance = 0;
+    let hasMaintenanceRecords = false;
 
     const modes = getModes(vehicleConfig);
 
@@ -48,6 +51,25 @@ export function calculateRoadList(
         cumulativeFuel += (it.fuel || 0) - rowConsumed;
         cumulativeReceivedFuel += it.fuel || 0;
 
+        // Update maintenance tracking
+        if (it.maintenance) {
+            // Reset counters when maintenance flag is set
+            hasMaintenanceRecords = true;
+            cumulativeHoursFromRecentMaintenance = isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0;
+            cumulativeFuelFromRecentMaintenance = 0;
+        } else if (hasMaintenanceRecords) {
+            // Only accumulate if we've seen a maintenance record
+            if (isBoat(vehicleConfig) && typeof cumulativeHoursFromRecentMaintenance === 'object') {
+                cumulativeHoursFromRecentMaintenance = {
+                    left: Math.round((cumulativeHoursFromRecentMaintenance.left + rowHours) * 100) / 100,
+                    right: Math.round((cumulativeHoursFromRecentMaintenance.right + rowHours) * 100) / 100,
+                };
+            } else if (typeof cumulativeHoursFromRecentMaintenance === 'number') {
+                cumulativeHoursFromRecentMaintenance += rowHours;
+            }
+            cumulativeFuelFromRecentMaintenance += rowConsumed;
+        }
+
         return {
             ...it,
             rowHours,
@@ -56,6 +78,10 @@ export function calculateRoadList(
                 ? { ...cumulativeHours }
                 : cumulativeHours,
             cumulativeFuel: Math.round(cumulativeFuel * 100) / 100,
+            cumulativeHoursFromRecentMaintenance: typeof cumulativeHoursFromRecentMaintenance === 'object'
+                ? { ...cumulativeHoursFromRecentMaintenance }
+                : cumulativeHoursFromRecentMaintenance,
+            cumulativeFuelFromRecentMaintenance: Math.round(cumulativeFuelFromRecentMaintenance * 100) / 100,
         };
     });
 
@@ -71,7 +97,9 @@ export function calculateRoadList(
             ? { ...cumulativeHours }
             : cumulativeHours,
         cumulativeFuel: Math.round(cumulativeFuel * 100) / 100,
-        cumulativeReceivedFuel
+        cumulativeReceivedFuel,
+        cumulativeHoursFromRecentMaintenance: hasMaintenanceRecords ? cumulativeHoursFromRecentMaintenance : undefined,
+        cumulativeFuelFromRecentMaintenance: hasMaintenanceRecords ? cumulativeFuelFromRecentMaintenance : undefined,
     };
 }
 

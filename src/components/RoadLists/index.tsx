@@ -213,7 +213,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                                 <Text>{cumulativeHours}</Text>
                                             </HStack>
                                             {cumulativeHoursFromRecentMaintenance ? <HStack>
-                                                <Text>Після ТО:</Text>
+                                                <Text>Після крайнього ТО:</Text>
                                                 <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
                                                 <Text>{cumulativeHoursFromRecentMaintenance}</Text>
                                             </HStack> : null}

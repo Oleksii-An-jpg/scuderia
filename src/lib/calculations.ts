@@ -53,10 +53,17 @@ export function calculateRoadList(
 
         // Update maintenance tracking
         if (it.maintenance) {
-            // Reset counters when maintenance flag is set
+            // Reset counters when maintenance flag is set, then include this row
             hasMaintenanceRecords = true;
-            cumulativeHoursFromRecentMaintenance = isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0;
-            cumulativeFuelFromRecentMaintenance = 0;
+            if (isBoat(vehicleConfig)) {
+                cumulativeHoursFromRecentMaintenance = {
+                    left: Math.round(rowHours * 100) / 100,
+                    right: Math.round(rowHours * 100) / 100,
+                };
+            } else {
+                cumulativeHoursFromRecentMaintenance = rowHours;
+            }
+            cumulativeFuelFromRecentMaintenance = rowConsumed;
         } else if (hasMaintenanceRecords) {
             // Only accumulate if we've seen a maintenance record
             if (isBoat(vehicleConfig) && typeof cumulativeHoursFromRecentMaintenance === 'object') {

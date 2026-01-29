@@ -7,14 +7,17 @@ export function calculateRoadList(
     roadList: RoadList,
     vehicleConfig: VehicleConfig,
     startFuel?: number,
-    startHours?: EngineHours | number
+    startHours?: EngineHours | number,
+    startMaintenanceHours?: EngineHours | number,
+    startMaintenanceFuel?: number,
+    hasMaintenanceRecords?: boolean
 ): CalculatedRoadList {
     let cumulativeHours: EngineHours | number = startHours ?? roadList.startHours;
     let cumulativeFuel = startFuel ?? roadList.startFuel;
     let cumulativeReceivedFuel = 0;
-    let cumulativeHoursFromRecentMaintenance: EngineHours | number = isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0;
-    let cumulativeFuelFromRecentMaintenance = 0;
-    let hasMaintenanceRecords = false;
+    let cumulativeHoursFromRecentMaintenance: EngineHours | number = startMaintenanceHours ?? (isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0);
+    let cumulativeFuelFromRecentMaintenance = startMaintenanceFuel ?? 0;
+    let hasMaintenanceRecordsFlag = hasMaintenanceRecords ?? false;
 
     const modes = getModes(vehicleConfig);
 
@@ -54,7 +57,7 @@ export function calculateRoadList(
         // Update maintenance tracking
         if (it.maintenance) {
             // Reset counters when maintenance flag is set, then include this row
-            hasMaintenanceRecords = true;
+            hasMaintenanceRecordsFlag = true;
             if (isBoat(vehicleConfig)) {
                 cumulativeHoursFromRecentMaintenance = {
                     left: Math.round(rowHours * 100) / 100,
@@ -64,7 +67,7 @@ export function calculateRoadList(
                 cumulativeHoursFromRecentMaintenance = rowHours;
             }
             cumulativeFuelFromRecentMaintenance = rowConsumed;
-        } else if (hasMaintenanceRecords) {
+        } else if (hasMaintenanceRecordsFlag) {
             // Only accumulate if we've seen a maintenance record
             if (isBoat(vehicleConfig) && typeof cumulativeHoursFromRecentMaintenance === 'object') {
                 cumulativeHoursFromRecentMaintenance = {
@@ -105,8 +108,9 @@ export function calculateRoadList(
             : cumulativeHours,
         cumulativeFuel: Math.round(cumulativeFuel * 100) / 100,
         cumulativeReceivedFuel,
-        cumulativeHoursFromRecentMaintenance: hasMaintenanceRecords ? cumulativeHoursFromRecentMaintenance : undefined,
-        cumulativeFuelFromRecentMaintenance: hasMaintenanceRecords ? cumulativeFuelFromRecentMaintenance : undefined,
+        cumulativeHoursFromRecentMaintenance: hasMaintenanceRecordsFlag ? cumulativeHoursFromRecentMaintenance : undefined,
+        cumulativeFuelFromRecentMaintenance: hasMaintenanceRecordsFlag ? cumulativeFuelFromRecentMaintenance : undefined,
+        hasMaintenanceRecords: hasMaintenanceRecordsFlag,
     };
 }
 
@@ -115,6 +119,11 @@ export function calculateRoadListChain(
     vehicleConfigs: VehicleConfig[]
 ): CalculatedRoadList[] {
     const results: CalculatedRoadList[] = [];
+
+    // Track state across roadLists
+    let previousMaintenanceHours: EngineHours | number | undefined;
+    let previousMaintenanceFuel: number | undefined;
+    let hasMaintenanceRecords = false;
 
     for (let i = 0; i < roadLists.length; i++) {
         const current = roadLists[i];
@@ -128,7 +137,25 @@ export function calculateRoadListChain(
         const startFuel = current.startFuel;
         const startHours = current.startHours;
 
-        results.push(calculateRoadList(current, vehicleConfig, startFuel, startHours));
+        // Pass maintenance state from previous roadList
+        const calculated = calculateRoadList(
+            current,
+            vehicleConfig,
+            startFuel,
+            startHours,
+            previousMaintenanceHours,
+            previousMaintenanceFuel,
+            hasMaintenanceRecords
+        );
+
+        // Update state for next roadList
+        if (calculated.hasMaintenanceRecords) {
+            hasMaintenanceRecords = true;
+        }
+        previousMaintenanceHours = calculated.cumulativeHoursFromRecentMaintenance;
+        previousMaintenanceFuel = calculated.cumulativeFuelFromRecentMaintenance;
+
+        results.push(calculated);
     }
 
     return results;

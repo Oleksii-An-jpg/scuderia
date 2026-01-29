@@ -208,12 +208,12 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                     <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
                                         <VStack gap={0.5}>
                                             <Text as="b">{vehicle.name} ({vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'})</Text>
-                                            <HStack>
+                                            <HStack className="whitespace-nowrap">
                                                 <Text>{remainingFuel} л.</Text>
                                                 <Text>{cumulativeHours}</Text>
                                             </HStack>
-                                            {cumulativeHoursFromRecentMaintenance ? <HStack>
-                                                <Text>Після крайнього ТО:</Text>
+                                            {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
+                                                <Text>Після ТО:</Text>
                                                 <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
                                                 <Text>{cumulativeHoursFromRecentMaintenance}</Text>
                                             </HStack> : null}

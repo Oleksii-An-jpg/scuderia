@@ -57,6 +57,7 @@ export type CalculatedRoadList = RoadList & {
     cumulativeReceivedFuel: number;
     cumulativeHoursFromRecentMaintenance?: EngineHours | number;
     cumulativeFuelFromRecentMaintenance?: number;
+    hasMaintenanceRecords?: boolean;
 }
 
 // Firestore converter types

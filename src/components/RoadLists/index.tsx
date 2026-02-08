@@ -169,7 +169,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                 <Card.Header>
                     <HStack justifyContent="space-between" className="relative pl-18!">
                         <Box className="absolute left-0 top-1/2 -translate-y-1/2">
-                            <Image src="/ornament.png" alt="ornament" width={60} height={60} />
+                            <Image src="/angel.png" alt="angel" width={60} height={60} />
                         </Box>
                         <Text>Дорожні листи</Text>
                         {role === 'admin' ? <Button colorPalette="yellow" asChild>

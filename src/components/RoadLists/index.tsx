@@ -11,7 +11,7 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink, Box
+    Link as ChakraLink, Box, Icon
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -23,7 +23,7 @@ import { onSnapshot, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
-import {BiAnchor, BiUser} from "react-icons/bi";
+import {BiAnchor, BiUser, BiPlus} from "react-icons/bi";
 import Image from "next/image";
 
 type RoadListProps = {
@@ -235,10 +235,15 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                         ))}
                     </Tabs.Root>
                 </Card.Body>
-                <Card.Footer>
-                    <Button variant="outline" size="sm" onClick={() => handleOpenForm()}>
-                        Додати лист
-                    </Button>
+                <Card.Footer shadow="inset" className="bg-white sticky bottom-0">
+                    <Box pt={4}>
+                        <Button variant="solid" colorPalette="green" size="lg" onClick={() => handleOpenForm()}>
+                            <Icon>
+                                <BiPlus />
+                            </Icon>
+                            Додати дорожній лист
+                        </Button>
+                    </Box>
                 </Card.Footer>
             </Card.Root>
 

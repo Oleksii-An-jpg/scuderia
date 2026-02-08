@@ -6,7 +6,7 @@ import {DndContext, closestCenter, UniqueIdentifier} from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
-import {Button, Grid, GridItem, Heading, HStack, IconButton, Separator, Text, VStack} from '@chakra-ui/react';
+import {Button, Grid, Alert, GridItem, Heading, HStack, IconButton, Separator, Text, VStack} from '@chakra-ui/react';
 import {BiPlus, BiMenu, BiSolidWrench} from 'react-icons/bi';
 import { Itinerary, RoadList } from '@/types/roadList';
 import { getModes, isBoat } from '@/types/vehicle';
@@ -153,6 +153,13 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                 <VStack alignItems="stretch" gap={4}>
                     <RoadListHeader vehicle={roadList.vehicle} />
 
+                    <Alert.Root status="info">
+                        <Alert.Indicator />
+                        <Alert.Content>
+                            <Alert.Title>Не забудьте зберегти внесені зміни</Alert.Title>
+                        </Alert.Content>
+                    </Alert.Root>
+
                     <HStack>
                         <Separator flex="1" />
                         <Text flexShrink="0" textStyle="md" fontWeight="bold">Записи</Text>
@@ -212,14 +219,16 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                         <Summary calculated={calculated} vehicle={roadList.vehicle} />
                     </Grid>
 
-                    <HStack>
-                        <Button colorPalette="blue" size="xs" onClick={() => handleAppend()}>
-                            <BiPlus /> Додати запис
-                        </Button>
-                        <Button colorPalette="green" size="xs" onClick={() => handleAppend(true)}>
-                            <BiSolidWrench /> Додати ТО
-                        </Button>
-                    </HStack>
+                    <VStack align="stretch">
+                        <HStack>
+                            <Button colorPalette="blue" size="xs" onClick={() => handleAppend()}>
+                                <BiPlus /> Додати запис
+                            </Button>
+                            <Button colorPalette="green" size="xs" onClick={() => handleAppend(true)}>
+                                <BiSolidWrench /> Додати ТО
+                            </Button>
+                        </HStack>
+                    </VStack>
                 </VStack>
             </form>
         </FormProvider>

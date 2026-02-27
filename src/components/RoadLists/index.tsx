@@ -202,8 +202,8 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                 const last = roadLists[roadLists.length - 1];
                                 const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
                                 const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0;
-                                const cumulativeHoursFromRecentMaintenance = last.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
-                                const cumulativeFuelFromRecentMaintenance = last.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
+                                const cumulativeHoursFromRecentMaintenance = last?.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
+                                const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
                                 return (
                                     <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
                                         <VStack gap={0.5}>

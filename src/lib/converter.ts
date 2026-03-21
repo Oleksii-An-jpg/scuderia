@@ -26,6 +26,7 @@ export function firestoreToRoadList(data: FirestoreRoadList, id: string, vehicle
         itineraries: data.itineraries.map(it => {
             return {
                 ...it,
+                startTime: it.startTime || '09:00',
                 date: it.date.toDate(),
             }
         }),

@@ -8,6 +8,7 @@ export type Itinerary = {
     comment?: string;
     docs?: (string | File)[];
     maintenance?: boolean;
+    startTime?: string;
     // Dynamic fields for speed modes or terrain types
     // [key: string]: number | null | Date | string | undefined;
 }

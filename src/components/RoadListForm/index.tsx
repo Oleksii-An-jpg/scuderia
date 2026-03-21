@@ -132,7 +132,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
             br: null,
             fuel: null,
             comment: '',
-            maintenance
+            maintenance,
         };
 
         // Add vehicle-specific fields
@@ -145,7 +145,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     };
 
     // Calculate grid columns: 3 base + modes + 7 additional
-    const totalColumns = 1 + 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
+    const totalColumns = 2 + 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
 
     return (
         <FormProvider {...methods}>
@@ -167,7 +167,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     </HStack>
 
                     <Grid
-                        templateColumns={`min-content repeat(3, 6em) repeat(${modes.length}, ${isBoat(vehicleConfig) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(vehicleConfig) ? 'min-content min-content auto' : 'min-content auto'}`}
+                        templateColumns={`min-content repeat(3, 6em) repeat(${modes.length}, ${isBoat(vehicleConfig) ? '6.5em' : '5em'}) repeat(4, 5em) ${isBoat(vehicleConfig) ? 'min-content min-content min-content auto' : 'min-content auto'}`}
                         gap={2}
                     >
                         {/* Column Headers */}
@@ -193,6 +193,9 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                             ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
                             <GridItem>
                                 <Heading size="sm">Файли</Heading>
+                            </GridItem>
+                            <GridItem>
+                                <Heading size="sm">Таймінг</Heading>
                             </GridItem>
                             <GridItem><Heading size="sm">Коментар</Heading></GridItem>
                         </Grid>

@@ -15,7 +15,7 @@ import {
     Textarea,
     FileUpload,
     useFileUploadContext,
-    Separator,
+    Separator
 } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
 import {BiTrash, BiUpload, BiX} from 'react-icons/bi';
@@ -26,6 +26,7 @@ import { decimalToTimeString } from '@/lib/timeUtils';
 import TimeInput from '@/components/TimeInput';
 import 'react-datepicker/dist/react-datepicker.css';
 import Link from "next/link";
+import Timing from "@/components/Timing";
 
 type Props = {
     index: number;
@@ -86,7 +87,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
     }, [files]);
 
     // Calculate column span: 3 (date, br, fuel) + modes.length + 7 (total, consumed, cumFuel, L motor, P motor, comment, files)
-    const totalColumns = 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
+    const totalColumns = 1 + 3 + modes.length + (isBoat(vehicleConfig) ? 7 : 6);
 
     const rowHours = calculated?.rowHours ?? 0;
     const rowConsumed = calculated?.rowConsumed ?? 0;
@@ -254,6 +255,10 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                         </GridItem>
                         <GridItem gridColumn="inherit" order={totalColumns + 1}>
                             <FileUploadList />
+                        </GridItem>
+
+                        <GridItem>
+                            <Timing index={index} vehicleConfig={vehicleConfig} calculated={calculated} />
                         </GridItem>
 
                         {/* Comment & Delete */}

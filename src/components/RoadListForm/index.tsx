@@ -133,6 +133,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
             fuel: null,
             comment: '',
             maintenance,
+            startTime: '09:00'
         };
 
         // Add vehicle-specific fields

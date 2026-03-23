@@ -97,6 +97,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
             br: null,
             fuel: null,
             comment: '',
+            startTime: '09:00'
         };
 
         modes.forEach(mode => {

@@ -11,7 +11,7 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink, Box, Icon
+    Link as ChakraLink, Box, Icon, HoverCard
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -194,10 +194,10 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             window.history.replaceState({}, '', `${pathname}?${params.toString()}`)
                         }}
                         css={{
-                            '--tabs-height': 'sizes.16'
+                            '--tabs-height': 'sizes.16',
                         }}
                     >
-                        <Tabs.List>
+                        <Tabs.List zIndex={1}>
                             {vehicles.map(vehicle => {
                                 const roadLists = getByVehicle(vehicle.id);
                                 const last = roadLists[roadLists.length - 1];
@@ -205,22 +205,32 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                 const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0;
                                 const cumulativeHoursFromRecentMaintenance = last?.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
                                 const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
-                                return (
-                                    <Tabs.Trigger key={vehicle.id} value={vehicle.id}>
-                                        <VStack gap={0.5}>
-                                            <Text as="b">{vehicle.name} ({vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'})</Text>
-                                            <HStack className="whitespace-nowrap">
-                                                <Text>{remainingFuel} л.</Text>
-                                                <Text>{cumulativeHours}</Text>
-                                            </HStack>
-                                            {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
-                                                <Text>Після ТО:</Text>
-                                                <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
-                                                <Text>{cumulativeHoursFromRecentMaintenance}</Text>
-                                            </HStack> : null}
-                                        </VStack>
-                                    </Tabs.Trigger>
-                                )
+                                return <HoverCard.Root key={vehicle.id}>
+                                    <HoverCard.Trigger>
+                                        <Tabs.Trigger value={vehicle.id}>
+                                            <Text as="b">{vehicle.name}</Text>
+                                        </Tabs.Trigger>
+                                    </HoverCard.Trigger>
+                                    <HoverCard.Positioner css={{ "--z-index": "2000" }}>
+                                        <HoverCard.Content>
+                                            <VStack alignItems="stretch">
+                                                <Text>{vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'}</Text>
+                                                <HStack className="whitespace-nowrap">
+                                                    <Text>{remainingFuel} л.</Text>
+                                                    <Text>{cumulativeHours}</Text>
+                                                </HStack>
+                                                {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
+                                                    <Text>Після ТО:</Text>
+                                                    <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
+                                                    <Text>{cumulativeHoursFromRecentMaintenance}</Text>
+                                                </HStack> : null}
+                                            </VStack>
+                                            <HoverCard.Arrow>
+                                                <HoverCard.ArrowTip />
+                                            </HoverCard.Arrow>
+                                        </HoverCard.Content>
+                                    </HoverCard.Positioner>
+                                </HoverCard.Root>
                             })}
                         </Tabs.List>
 

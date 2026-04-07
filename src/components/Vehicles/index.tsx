@@ -375,7 +375,7 @@ const Vehicles: FC<VehiclesProps> = (props) => {
                                                                 <Input
                                                                     autoComplete="off"
                                                                     type="number"
-                                                                    step={0.001}
+                                                                    step={0.00001}
                                                                     placeholder="Коефіцієнт витрати пального"
                                                                     {...register(`modes.${index}.rate`, {
                                                                         valueAsNumber: true,

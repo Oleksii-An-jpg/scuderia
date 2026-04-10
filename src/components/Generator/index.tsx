@@ -2,7 +2,6 @@
 import {FC, PropsWithChildren, DragEvent, useCallback, useEffect, useRef} from 'react';
 import {
     Button,
-    Container,
     Field,
     Heading,
     Input,
@@ -29,6 +28,7 @@ import {
 } from '@dnd-kit/sortable'
 import {CSS} from "@dnd-kit/utilities";
 import {useBoolean} from "usehooks-ts";
+import ClipboardIconButton from "@/components/ClipboardIconButton";
 
 const MAX_FILES = 1;
 
@@ -92,16 +92,6 @@ const DropzoneTextarea: FC<DropzoneTextareaProps> = (props) => {
             </Box>
         </FileUpload.ClearTrigger>
     </FileUpload.Root>
-}
-
-const ClipboardIconButton = () => {
-    return (
-        <Clipboard.Trigger asChild alignSelf="start">
-            <IconButton colorPalette="pink" variant="surface" size="xs" mt={2}>
-                <Clipboard.Indicator />
-            </IconButton>
-        </Clipboard.Trigger>
-    )
 }
 
 type Values = {
@@ -294,102 +284,100 @@ const SurveyRouteGenerator: FC = () => {
     }, [])
 
     return (
-        <Container maxW="full">
-            <VStack align="stretch">
-                <Heading>Survey Pattern Route Generator</Heading>
-                <FormProvider {...methods}>
-                    <VStack gap={4} as="form" align="stretch" onSubmit={handleSubmit((data) => {
-                        const { output, waypoints } = generateSurveyRoute(data.contacts, {
-                            speed: data.speed,
-                            useBoxLeadins: data.useBoxLeadins,
-                        });
-                        setValue('route', output.join('\n'));
-                        setValue('waypoints', waypoints);
-                    })}>
-                        <Box onDragEnter={handleDragEnter} onDragLeave={() => {
-                            setFalse()
-                        }}>
-                            <DropzoneTextarea onClear={onClear} isDragging={value} />
-                        </Box>
-                        <HStack alignItems="start" gap={2}>
-                            <Grid className="w-1/2" gridTemplateColumns="repeat(7, auto)" gap={2}>
-                                <Grid templateColumns="subgrid" gridColumn="1 / -1">
-                                    <GridItem colStart={2}>
-                                        Lat
-                                    </GridItem>
-                                    {['Lon', 'Tracks', 'Spacing', 'Bearing'].map(h => (
-                                        <GridItem key={h}><Heading size="sm">{h}</Heading></GridItem>
-                                    ))}
-                                </Grid>
-                                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                    <SortableContext items={fields} strategy={verticalListSortingStrategy}>
-                                        {fields.map((field, i) => (
-                                            <SortableItem key={field.id} id={field.id} index={i}>
-                                                <Field.Root><Input size="sm" type="number" step="any" disabled {...register(`contacts.${i}.lat`, {valueAsNumber: true})} /></Field.Root>
-                                                <Field.Root><Input size="sm" type="number" step="any" disabled {...register(`contacts.${i}.lon`, {valueAsNumber: true})} /></Field.Root>
-                                                {/*<Field.Root><Input size="sm" disabled {...register(`contacts.${i}.type`)} /></Field.Root>*/}
-                                                {/*<Field.Root><Input size="sm" disabled {...register(`contacts.${i}.id`)} /></Field.Root>*/}
-                                                <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.numTracks`, {valueAsNumber: true})} /></Field.Root>
-                                                <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.spacing`, {valueAsNumber: true})} /></Field.Root>
-                                                <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.bearing`, {valueAsNumber: true})} /></Field.Root>
-                                                <GridItem>
-                                                    <IconButton size="sm" colorPalette="red" variant="outline" onClick={() => {
-                                                        remove(i);
-                                                    }}><BiTrash /></IconButton>
-                                                </GridItem>
-                                            </SortableItem>
-                                        ))}
-                                    </SortableContext>
-                                </DndContext>
+        <VStack align="stretch">
+            <Heading>Survey Pattern Route Generator</Heading>
+            <FormProvider {...methods}>
+                <VStack gap={4} as="form" align="stretch" onSubmit={handleSubmit((data) => {
+                    const { output, waypoints } = generateSurveyRoute(data.contacts, {
+                        speed: data.speed,
+                        useBoxLeadins: data.useBoxLeadins,
+                    });
+                    setValue('route', output.join('\n'));
+                    setValue('waypoints', waypoints);
+                })}>
+                    <Box onDragEnter={handleDragEnter} onDragLeave={() => {
+                        setFalse()
+                    }}>
+                        <DropzoneTextarea onClear={onClear} isDragging={value} />
+                    </Box>
+                    <HStack alignItems="start" gap={2}>
+                        <Grid className="w-1/2" gridTemplateColumns="repeat(7, auto)" gap={2}>
+                            <Grid templateColumns="subgrid" gridColumn="1 / -1">
+                                <GridItem colStart={2}>
+                                    Lat
+                                </GridItem>
+                                {['Lon', 'Tracks', 'Spacing', 'Bearing'].map(h => (
+                                    <GridItem key={h}><Heading size="sm">{h}</Heading></GridItem>
+                                ))}
                             </Grid>
-                            <Box className="h-full min-h-64 w-1/2" ref={mapRef} overflow="hidden" />
-                        </HStack>
+                            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <SortableContext items={fields} strategy={verticalListSortingStrategy}>
+                                    {fields.map((field, i) => (
+                                        <SortableItem key={field.id} id={field.id} index={i}>
+                                            <Field.Root><Input size="sm" type="number" step="any" disabled {...register(`contacts.${i}.lat`, {valueAsNumber: true})} /></Field.Root>
+                                            <Field.Root><Input size="sm" type="number" step="any" disabled {...register(`contacts.${i}.lon`, {valueAsNumber: true})} /></Field.Root>
+                                            {/*<Field.Root><Input size="sm" disabled {...register(`contacts.${i}.type`)} /></Field.Root>*/}
+                                            {/*<Field.Root><Input size="sm" disabled {...register(`contacts.${i}.id`)} /></Field.Root>*/}
+                                            <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.numTracks`, {valueAsNumber: true})} /></Field.Root>
+                                            <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.spacing`, {valueAsNumber: true})} /></Field.Root>
+                                            <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.bearing`, {valueAsNumber: true})} /></Field.Root>
+                                            <GridItem>
+                                                <IconButton size="sm" colorPalette="red" variant="outline" onClick={() => {
+                                                    remove(i);
+                                                }}><BiTrash /></IconButton>
+                                            </GridItem>
+                                        </SortableItem>
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
+                        </Grid>
+                        <Box className="h-full min-h-64 w-1/2" ref={mapRef} overflow="hidden" />
+                    </HStack>
 
-                        <HStack alignItems="center" gap={2}>
-                            <Field.Root>
-                                <Field.Label>Vehicle Speed (m/s)</Field.Label>
-                                <Input type="number" {...register('speed', {valueAsNumber: true})} step="0.1" />
-                            </Field.Root>
-                            <Controller
-                                name="useBoxLeadins"
-                                control={control}
-                                render={({ field }) => (
-                                    <Field.Root>
-                                        <Tooltip ids={{ trigger: 'id' }} content="We do our best trying to flatten sharp angles on a leadin waypoints so vehicle enters a survey track more or less stable">
-                                            <Switch.Root
-                                                ids={{ root: 'id' }}
-                                                name={field.name}
-                                                checked={field.value}
-                                                onCheckedChange={({ checked }) => field.onChange(checked)}
-                                            >
-                                                <Switch.HiddenInput onBlur={field.onBlur} />
-                                                <Switch.Control />
-                                                <Switch.Label>
-                                                    Use SMART lead-ins (experimental)
-                                                </Switch.Label>
-                                            </Switch.Root>
-                                        </Tooltip>
-                                    </Field.Root>
-                                )}
-                            />
-                        </HStack>
+                    <HStack alignItems="center" gap={2}>
+                        <Field.Root>
+                            <Field.Label>Vehicle Speed (m/s)</Field.Label>
+                            <Input type="number" {...register('speed', {valueAsNumber: true})} step="0.1" />
+                        </Field.Root>
+                        <Controller
+                            name="useBoxLeadins"
+                            control={control}
+                            render={({ field }) => (
+                                <Field.Root>
+                                    <Tooltip ids={{ trigger: 'id' }} content="We do our best trying to flatten sharp angles on a leadin waypoints so vehicle enters a survey track more or less stable">
+                                        <Switch.Root
+                                            ids={{ root: 'id' }}
+                                            name={field.name}
+                                            checked={field.value}
+                                            onCheckedChange={({ checked }) => field.onChange(checked)}
+                                        >
+                                            <Switch.HiddenInput onBlur={field.onBlur} />
+                                            <Switch.Control />
+                                            <Switch.Label>
+                                                Use SMART lead-ins (experimental)
+                                            </Switch.Label>
+                                        </Switch.Root>
+                                    </Tooltip>
+                                </Field.Root>
+                            )}
+                        />
+                    </HStack>
 
-                        <Button type="submit" colorPalette="pink" disabled={!isDirty || !isValid}>Generate Routes</Button>
+                    <Button type="submit" colorPalette="pink" disabled={!isDirty || !isValid}>Generate Routes</Button>
 
-                        <Clipboard.Root value={route}>
-                            <Clipboard.Label>
-                                <Heading size="md" mb={2}>Mission plan</Heading>
-                            </Clipboard.Label>
-                            <InputGroup endElement={<ClipboardIconButton />}>
-                                <Clipboard.Input asChild>
-                                    <Textarea variant="subtle" rows={20} fontFamily="mono" placeholder="Mission plan appears here..." value={route} readOnly />
-                                </Clipboard.Input>
-                            </InputGroup>
-                        </Clipboard.Root>
-                    </VStack>
-                </FormProvider>
-            </VStack>
-        </Container>
+                    <Clipboard.Root value={route}>
+                        <Clipboard.Label>
+                            <Heading size="md" mb={2}>Mission plan</Heading>
+                        </Clipboard.Label>
+                        <InputGroup endElement={<ClipboardIconButton />}>
+                            <Clipboard.Input asChild>
+                                <Textarea variant="subtle" rows={20} fontFamily="mono" placeholder="Mission plan appears here..." value={route} readOnly />
+                            </Clipboard.Input>
+                        </InputGroup>
+                    </Clipboard.Root>
+                </VStack>
+            </FormProvider>
+        </VStack>
     );
 };
 

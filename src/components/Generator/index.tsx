@@ -117,7 +117,7 @@ const SortableItem: FC<SortableItemProps> = ({ id, children }) => {
     };
 
     return (
-        <Grid ref={setNodeRef} style={style} className="bg-white" templateColumns="subgrid" gridColumn="1 / -1">
+        <Grid ref={setNodeRef} style={style} templateColumns="subgrid" gridColumn="1 / -1">
             <GridItem alignSelf="center">
                 <IconButton size="xs" variant="ghost" cursor="pointer" {...attributes} {...listeners}>
                     <BiMenu />

@@ -19,7 +19,6 @@ type TimeSegment = {
     endTime: string; // HH:MM format
 }
 
-// Convert hours to HH:MM format
 function formatTime(hours: number): string {
     const totalMinutes = Math.round(hours * 60);
     const h = Math.floor(totalMinutes / 60);
@@ -27,7 +26,6 @@ function formatTime(hours: number): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// Add hours to a time string
 function addHours(timeStr: string, hours: number): string {
     const [h, m] = timeStr.split(':').map(Number);
     const totalMinutes = h * 60 + m + Math.round(hours * 60);
@@ -36,145 +34,133 @@ function addHours(timeStr: string, hours: number): string {
     return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
 }
 
-// Add minutes to a time string
-function addMinutes(timeStr: string, minutes: number): string {
-    const [h, m] = timeStr.split(':').map(Number);
-    const totalMinutes = h * 60 + m + minutes;
-    const newH = Math.floor(totalMinutes / 60) % 24;
-    const newM = totalMinutes % 60;
-    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
-}
-
-// Simple hash function to generate pseudo-random number from date
-function hashDate(date: Date): number {
-    const dateStr = date.toISOString().split('T')[0];
+function hashString(str: string): number {
     let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-        hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
-        hash = hash & hash; // Convert to 32-bit integer
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
     }
     return Math.abs(hash);
 }
 
-// Generate a deterministic shift in minutes based on segment index and date
-function getTimeShift(date: Date, segmentIndex: number): number {
-    const hash = hashDate(date);
-    const seed = hash + segmentIndex;
-    // Generate shift between -3 and +3 minutes
-    return ((seed % 7) - 3);
-}
-
-// Distribute time segments in an interleaved pattern without consecutive repeats
 function distributeTimeSegments(
     modeData: Record<string, number>,
     modes: VehicleMode[],
     startTime: string,
     itineraryDate?: Date
 ): TimeSegment[] {
-    // Sort modes by order (slowest to fastest)
     const sortedModes = [...modes].sort((a, b) => a.order - b.order);
-
-    // Filter only modes that have time assigned
-    const activeModes = sortedModes.filter(mode => (modeData[mode.id] || 0) > 0);
-
+    const activeModes = sortedModes.filter(m => (modeData[m.id] || 0) > 0);
     if (activeModes.length === 0) return [];
 
+    const dateStr = itineraryDate ? itineraryDate.toISOString().split('T')[0] : "fixed";
+    const remainingTime = { ...modeData };
     const segments: TimeSegment[] = [];
     let currentTime = startTime;
 
-    // If only one mode, just use it
-    if (activeModes.length === 1) {
-        const mode = activeModes[0];
-        const duration = modeData[mode.id];
-        segments.push({
-            modeId: mode.id,
-            modeName: mode.label,
-            duration,
-            startTime: currentTime,
-            endTime: addHours(currentTime, duration)
-        });
-        return segments;
+    const pushSegment = (mode: VehicleMode, duration: number) => {
+        if (duration <= 0.001) return;
+        const lastSegment = segments[segments.length - 1];
+
+        if (lastSegment && lastSegment.modeId === mode.id) {
+            lastSegment.duration += duration;
+            lastSegment.endTime = addHours(lastSegment.startTime, lastSegment.duration);
+            currentTime = lastSegment.endTime;
+        } else {
+            const endTime = addHours(currentTime, duration);
+            segments.push({
+                modeId: mode.id,
+                modeName: mode.label,
+                duration,
+                startTime: currentTime,
+                endTime
+            });
+            currentTime = endTime;
+        }
+    };
+
+    // 1. Identify key modes
+    const slowest = activeModes[0];
+    const nextSlowest = activeModes[1];
+    const fastest = activeModes[activeModes.length - 1];
+
+    // 2. Start/End Queues
+    const startQueue: { mode: VehicleMode, dur: number }[] = [];
+    const endQueue: { mode: VehicleMode, dur: number }[] = [];
+
+    if (slowest) startQueue.push({ mode: slowest, dur: Math.min(0.25, remainingTime[slowest.id]) });
+    if (nextSlowest) startQueue.push({ mode: nextSlowest, dur: Math.min(0.25, remainingTime[nextSlowest.id]) });
+    if (fastest) {
+        const half = remainingTime[fastest.id] / 2;
+        startQueue.push({ mode: fastest, dur: half });
+        endQueue.push({ mode: fastest, dur: half });
+    }
+    if (nextSlowest) {
+        const dur = Math.min(0.25, Math.max(0, remainingTime[nextSlowest.id] - 0.25));
+        if (dur > 0) endQueue.push({ mode: nextSlowest, dur });
+    }
+    if (slowest) {
+        const dur = Math.min(0.25, Math.max(0, remainingTime[slowest.id] - 0.25));
+        if (dur > 0) endQueue.push({ mode: slowest, dur });
     }
 
-    // Determine bias direction: even date = start slow, odd date = start fast
-    const dateHash = itineraryDate ? hashDate(itineraryDate) : 0;
-    const biasToStart = dateHash % 2 === 0;
+    startQueue.forEach(q => remainingTime[q.mode.id] -= q.dur);
+    endQueue.forEach(q => remainingTime[q.mode.id] -= q.dur);
 
-    // Create a pool of remaining time for each mode
-    const remainingTime: Record<string, number> = {};
+    // EXECUTE START
+    startQueue.forEach(q => pushSegment(q.mode, q.dur));
+
+    // 3. GENERATE MIDDLE CHUNKS WITH JITTER
+    let middlePool: { mode: VehicleMode, duration: number, hash: number }[] = [];
+
     activeModes.forEach(mode => {
-        remainingTime[mode.id] = modeData[mode.id] || 0;
+        let timeLeft = remainingTime[mode.id];
+        if (timeLeft <= 0.01) return;
+
+        // Determine number of chunks (roughly every 20-40 mins)
+        const numChunks = Math.max(1, Math.ceil(timeLeft / 0.5));
+        let allocatedForMode = 0;
+
+        for (let i = 0; i < numChunks; i++) {
+            const chunkHash = hashString(`${mode.id}-${i}-${dateStr}`);
+            let chunkDur: number;
+
+            if (i === numChunks - 1) {
+                // Last chunk takes the absolute remainder to stay precise
+                chunkDur = timeLeft - allocatedForMode;
+            } else {
+                // Base duration + deterministic jitter (-30% to +30%)
+                const baseDur = timeLeft / numChunks;
+                const jitter = ((chunkHash % 60) - 30) / 100;
+                chunkDur = baseDur * (1 + jitter);
+
+                // Keep it within reasonable bounds (min 5 mins)
+                chunkDur = Math.max(0.08, chunkDur);
+                allocatedForMode += chunkDur;
+            }
+
+            middlePool.push({
+                mode,
+                duration: chunkDur,
+                hash: chunkHash
+            });
+        }
     });
 
-    // Determine number of total segments (4-8 depending on modes and time)
-    const targetSegments = Math.min(10, Math.max(4, activeModes.length * 2));
+    // 4. DISTRIBUTE MIDDLE (Greedy & Persistent)
+    while (middlePool.length > 0) {
+        const lastModeId = segments[segments.length - 1]?.modeId;
+        middlePool.sort((a, b) => a.hash - b.hash);
 
-    // Order modes based on bias
-    const modeOrder = biasToStart ? [...activeModes] : [...activeModes].reverse();
+        let index = middlePool.findIndex(chunk => chunk.mode.id !== lastModeId);
+        if (index === -1) index = 0;
 
-    let lastModeId: string | null = null;
-
-    for (let i = 0; i < targetSegments; i++) {
-        // Find modes that: 1) have time remaining, 2) aren't the last one used
-        const availableModes = modeOrder.filter(m =>
-            remainingTime[m.id] > 0.01 && m.id !== lastModeId
-        );
-
-        if (availableModes.length === 0) {
-            // If only one mode left (or all done), use it or break
-            const anyAvailable = modeOrder.find(m => remainingTime[m.id] > 0.01);
-            if (!anyAvailable) break;
-            availableModes.push(anyAvailable);
-        }
-
-        // Select mode based on progress through the journey
-        const progress = i / targetSegments;
-        let selectedMode: typeof activeModes[0];
-
-        if (biasToStart) {
-            // Start with slower modes, progress to faster
-            const index = Math.floor(progress * availableModes.length);
-            selectedMode = availableModes[Math.min(index, availableModes.length - 1)];
-        } else {
-            // Start with faster modes, progress to slower
-            const index = Math.floor((1 - progress) * availableModes.length);
-            selectedMode = availableModes[Math.min(index, availableModes.length - 1)];
-        }
-
-        // Determine segment duration with variation
-        const seed = dateHash + i * 7;
-        const portionFactor = 0.15 + ((seed % 35) / 100); // 0.15 to 0.5 of remaining time
-        let segmentDuration = Math.min(
-            remainingTime[selectedMode.id] * portionFactor,
-            remainingTime[selectedMode.id]
-        );
-
-        // If this is likely the last segment for this mode, use remaining time
-        const segmentsLeft = targetSegments - i;
-        const modesWithTimeLeft = Object.values(remainingTime).filter(t => t > 0.01).length;
-        if (segmentsLeft <= modesWithTimeLeft) {
-            segmentDuration = remainingTime[selectedMode.id];
-        }
-
-        // Apply time shift only to segments after the first one
-        const adjustedStartTime = (itineraryDate && segments.length > 0)
-            ? addMinutes(currentTime, getTimeShift(itineraryDate, segments.length))
-            : currentTime;
-
-        const endTime = addHours(adjustedStartTime, segmentDuration);
-
-        segments.push({
-            modeId: selectedMode.id,
-            modeName: selectedMode.label,
-            duration: segmentDuration,
-            startTime: adjustedStartTime,
-            endTime: endTime
-        });
-
-        remainingTime[selectedMode.id] -= segmentDuration;
-        lastModeId = selectedMode.id;
-        currentTime = endTime;
+        const [selected] = middlePool.splice(index, 1);
+        pushSegment(selected.mode, selected.duration);
     }
+
+    // 5. EXECUTE END
+    endQueue.forEach(q => pushSegment(q.mode, q.dur));
 
     return segments;
 }
@@ -183,7 +169,7 @@ const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
     const { register, watch } = useFormContext<RoadList>();
     const startTime = watch(`itineraries.${index}.startTime`);
 
-    const modes = getModes(vehicleConfig);
+    const modes = useMemo(() => getModes(vehicleConfig), [vehicleConfig]);
 
     const modeData = useMemo(() => {
         if (!calculated) return {};
@@ -191,9 +177,7 @@ const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
         modes.forEach(mode => {
             // @ts-expect-error: dynamic keys
             const value = (calculated[mode.id] as number) || 0;
-            if (value > 0) {
-                data[mode.id] = value;
-            }
+            if (value > 0) data[mode.id] = value;
         });
         return data;
     }, [calculated, modes]);
@@ -203,28 +187,28 @@ const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
         return distributeTimeSegments(modeData, modes, startTime || '09:00', date);
     }, [modeData, modes, startTime, calculated?.date]);
 
-    return <Dialog.Root>
-        <Dialog.Trigger asChild>
-            <IconButton size="xs" variant="outline">
-                <BiSolidTimer />
-            </IconButton>
-        </Dialog.Trigger>
-        <Portal>
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-                <Dialog.Content>
-                    <Dialog.Header>
-                        <Dialog.Title>Таймінг маршруту</Dialog.Title>
-                    </Dialog.Header>
-                    <Dialog.Body>
-                        <VStack align="stretch" gap={4}>
-                            <Input
-                                type="time"
-                                {...register(`itineraries.${index}.startTime`)}
-                            />
+    return (
+        <Dialog.Root>
+            <Dialog.Trigger asChild>
+                <IconButton size="xs" variant="outline">
+                    <BiSolidTimer />
+                </IconButton>
+            </Dialog.Trigger>
+            <Portal>
+                <Dialog.Backdrop />
+                <Dialog.Positioner>
+                    <Dialog.Content>
+                        <Dialog.Header>
+                            <Dialog.Title>Таймінг маршруту</Dialog.Title>
+                        </Dialog.Header>
+                        <Dialog.Body>
+                            <VStack align="stretch" gap={4}>
+                                <Input
+                                    type="time"
+                                    {...register(`itineraries.${index}.startTime`)}
+                                />
 
-                            {timeSegments.length > 0 && (
-                                <>
+                                {timeSegments.length > 0 && (
                                     <Table.Root size="sm" variant="outline" w="auto">
                                         <Table.Body>
                                             {timeSegments.map((segment, idx) => (
@@ -244,22 +228,21 @@ const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
                                                 <Table.Cell fontWeight="medium" px={2} py={1}>
                                                     {timeSegments[timeSegments.length - 1]?.endTime}
                                                 </Table.Cell>
-                                                <Table.Cell px={2} py={1}>
+                                                <Table.Cell px={2} py={1} color="gray.500">
                                                     СТОП
                                                 </Table.Cell>
-                                                <Table.Cell px={2} py={1}>
-                                                </Table.Cell>
+                                                <Table.Cell />
                                             </Table.Row>
                                         </Table.Body>
                                     </Table.Root>
-                                </>
-                            )}
-                        </VStack>
-                    </Dialog.Body>
-                </Dialog.Content>
-            </Dialog.Positioner>
-        </Portal>
-    </Dialog.Root>
-}
+                                )}
+                            </VStack>
+                        </Dialog.Body>
+                    </Dialog.Content>
+                </Dialog.Positioner>
+            </Portal>
+        </Dialog.Root>
+    );
+};
 
 export default Timing;

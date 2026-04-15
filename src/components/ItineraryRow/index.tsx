@@ -15,7 +15,7 @@ import {
     Textarea,
     FileUpload,
     useFileUploadContext,
-    Separator
+    Separator, Popover, Button, Portal
 } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
 import {BiTrash, BiUpload, BiX} from 'react-icons/bi';
@@ -97,7 +97,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
     return (
         <Controller name={`itineraries.${index}.docs`} control={control} render={({ field }) => <FileUpload.Root onFileChange={({ acceptedFiles }) => {
             field.onChange(acceptedFiles);
-        }} acceptedFiles={files?.every(file => file instanceof File) ? files : []} maxFiles={Infinity} className={`!grid-cols-subgrid !grid`} gridColumn={`span ${totalColumns}`}>
+        }} gap={2} acceptedFiles={files?.every(file => file instanceof File) ? files : []} maxFiles={Infinity} className={`!grid-cols-subgrid !grid`} gridColumn={`span ${totalColumns}`}>
             <Grid alignSelf="center" templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
                 <>
                     {maintenance ? <GridItem className="col-span-full">
@@ -264,14 +264,27 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                         {/* Comment & Delete */}
                         <GridItem>
                             <HStack>
-                                <Field.Root>
-                                    <Textarea
-                                        maxH="2lh"
-                                        resize="none"
-                                        size="xs"
-                                        {...register(`itineraries.${index}.comment`)}
-                                    />
-                                </Field.Root>
+                                <Popover.Root>
+                                    <Popover.Trigger asChild>
+                                        <Button size="2xs" variant="outline">
+                                            Коментар
+                                        </Button>
+                                    </Popover.Trigger>
+                                    <Popover.Positioner>
+                                        <Popover.Content>
+                                            <Popover.Arrow />
+                                            <Popover.Body>
+                                                <Popover.Title fontWeight="medium">Коментар</Popover.Title>
+                                                <Field.Root>
+                                                    <Textarea
+                                                        size="xs"
+                                                        {...register(`itineraries.${index}.comment`)}
+                                                    />
+                                                </Field.Root>
+                                            </Popover.Body>
+                                        </Popover.Content>
+                                    </Popover.Positioner>
+                                </Popover.Root>
                                 <IconButton
                                     onClick={onRemove}
                                     size="xs"

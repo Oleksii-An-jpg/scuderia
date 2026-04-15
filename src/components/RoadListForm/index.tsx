@@ -173,32 +173,32 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                     >
                         {/* Column Headers */}
                         <Grid templateColumns="subgrid" gridColumn={`span ${totalColumns}`}>
-                            <GridItem colStart={2}><Heading size="sm">Дата</Heading></GridItem>
-                            <GridItem><Heading size="sm">БР</Heading></GridItem>
-                            <GridItem><Heading size="sm">Бункеровка</Heading></GridItem>
+                            <GridItem colStart={2}><Heading size="xs">Дата</Heading></GridItem>
+                            <GridItem><Heading size="xs">БР</Heading></GridItem>
+                            <GridItem><Heading size="xs">Бункеровка</Heading></GridItem>
 
                             {modes.map(mode => (
                                 <GridItem key={mode.id}>
-                                    <Heading size="sm">{mode.label}</Heading>
+                                    <Heading size="xs">{mode.label}</Heading>
                                 </GridItem>
                             ))}
 
-                            <GridItem><Heading size="sm">Усього</Heading></GridItem>
-                            <GridItem><Heading size="sm">Розхід</Heading></GridItem>
-                            <GridItem><Heading size="sm">Залишок</Heading></GridItem>
+                            <GridItem><Heading size="xs">Усього</Heading></GridItem>
+                            <GridItem><Heading size="xs">Розхід</Heading></GridItem>
+                            <GridItem><Heading size="xs">Залишок</Heading></GridItem>
                             {isBoat(vehicleConfig) ? (
                                 <>
-                                    <GridItem><Heading size="sm" className="whitespace-nowrap">Л двигун</Heading></GridItem>
-                                    <GridItem><Heading size="sm" className="whitespace-nowrap">П двигун</Heading></GridItem>
+                                    <GridItem><Heading size="xs" className="whitespace-nowrap">Л двигун</Heading></GridItem>
+                                    <GridItem><Heading size="xs" className="whitespace-nowrap">П двигун</Heading></GridItem>
                                 </>
-                            ) : <GridItem><Heading size="sm">Одометр</Heading></GridItem>}
+                            ) : <GridItem><Heading size="xs">Одометр</Heading></GridItem>}
                             <GridItem>
-                                <Heading size="sm">Файли</Heading>
+                                <Heading size="xs">Файли</Heading>
                             </GridItem>
                             <GridItem>
-                                <Heading size="sm">Таймінг</Heading>
+                                <Heading size="xs">Таймінг</Heading>
                             </GridItem>
-                            <GridItem><Heading size="sm">Коментар</Heading></GridItem>
+                            <GridItem><Heading size="xs">Коментар</Heading></GridItem>
                         </Grid>
 
                         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

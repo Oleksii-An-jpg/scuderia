@@ -15,10 +15,10 @@ import {
     Textarea,
     FileUpload,
     useFileUploadContext,
-    Separator, Popover, Button, Portal
+    Separator, Popover
 } from '@chakra-ui/react';
 import DatePicker from 'react-datepicker';
-import {BiTrash, BiUpload, BiX} from 'react-icons/bi';
+import {BiComment, BiTrash, BiUpload, BiX} from 'react-icons/bi';
 import {RoadList, CalculatedItinerary} from '@/types/roadList';
 import { Vehicle, isBoat, getModes } from '@/types/vehicle';
 import {selectVehicleById, useVehicleStore} from '@/lib/vehicleStore';
@@ -266,9 +266,9 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                             <HStack>
                                 <Popover.Root>
                                     <Popover.Trigger asChild>
-                                        <Button size="2xs" variant="outline">
-                                            Коментар
-                                        </Button>
+                                        <IconButton size="xs" variant="outline">
+                                            <BiComment />
+                                        </IconButton>
                                     </Popover.Trigger>
                                     <Popover.Positioner>
                                         <Popover.Content>

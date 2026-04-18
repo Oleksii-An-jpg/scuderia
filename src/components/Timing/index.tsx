@@ -111,10 +111,10 @@ function distributeTimeSegments(
     startQueue.forEach(q => pushSegment(q.mode, q.dur));
 
     // 3. GENERATE MIDDLE CHUNKS WITH JITTER
-    let middlePool: { mode: VehicleMode, duration: number, hash: number }[] = [];
+    const middlePool: { mode: VehicleMode, duration: number, hash: number }[] = [];
 
     activeModes.forEach(mode => {
-        let timeLeft = remainingTime[mode.id];
+        const timeLeft = remainingTime[mode.id];
         if (timeLeft <= 0.01) return;
 
         // Determine number of chunks (roughly every 20-40 mins)

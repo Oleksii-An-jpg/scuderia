@@ -80,86 +80,93 @@ function distributeTimeSegments(
     };
 
     // 1. Identify key modes
-    const slowest = activeModes[0];
+    const slowest     = activeModes[0];
     const nextSlowest = activeModes[1];
-    const fastest = activeModes[activeModes.length - 1];
+    const closestMode = activeModes[2] ?? nextSlowest;
+    const fastest     = activeModes[activeModes.length - 1];
 
-    // 2. Start/End Queues
-    const startQueue: { mode: VehicleMode, dur: number }[] = [];
-    const endQueue: { mode: VehicleMode, dur: number }[] = [];
+    const BOOKEND_DUR = 0.25;
 
-    if (slowest) startQueue.push({ mode: slowest, dur: Math.min(0.25, remainingTime[slowest.id]) });
-    if (nextSlowest) startQueue.push({ mode: nextSlowest, dur: Math.min(0.25, remainingTime[nextSlowest.id]) });
+    const startQueue: { mode: VehicleMode; dur: number }[] = [];
+    const endQueue:   { mode: VehicleMode; dur: number }[] = [];
+
+    // --- header ---
+    if (slowest)     startQueue.push({ mode: slowest,     dur: Math.min(BOOKEND_DUR, remainingTime[slowest.id]) });
+    if (nextSlowest) startQueue.push({ mode: nextSlowest, dur: Math.min(BOOKEND_DUR, remainingTime[nextSlowest.id]) });
+    if (closestMode) {
+        const half = Math.min(BOOKEND_DUR, remainingTime[closestMode.id] / 2);
+        startQueue.push({ mode: closestMode, dur: half });
+        endQueue.push(  { mode: closestMode, dur: half });
+    }
     if (fastest) {
         const half = remainingTime[fastest.id] / 2;
         startQueue.push({ mode: fastest, dur: half });
-        endQueue.push({ mode: fastest, dur: half });
+        endQueue.push(  { mode: fastest, dur: half });
     }
+
+    // --- footer ---
     if (nextSlowest) {
-        const dur = Math.min(0.25, Math.max(0, remainingTime[nextSlowest.id] - 0.25));
+        const dur = Math.min(BOOKEND_DUR, Math.max(0, remainingTime[nextSlowest.id] - BOOKEND_DUR));
         if (dur > 0) endQueue.push({ mode: nextSlowest, dur });
     }
     if (slowest) {
-        const dur = Math.min(0.25, Math.max(0, remainingTime[slowest.id] - 0.25));
+        const dur = Math.min(BOOKEND_DUR, Math.max(0, remainingTime[slowest.id] - BOOKEND_DUR));
         if (dur > 0) endQueue.push({ mode: slowest, dur });
     }
 
-    startQueue.forEach(q => remainingTime[q.mode.id] -= q.dur);
-    endQueue.forEach(q => remainingTime[q.mode.id] -= q.dur);
+    startQueue.forEach(q => { remainingTime[q.mode.id] -= q.dur; });
+    endQueue.forEach(  q => { remainingTime[q.mode.id] -= q.dur; });
 
-    // EXECUTE START
+    // EXECUTE HEADER
     startQueue.forEach(q => pushSegment(q.mode, q.dur));
 
-    // 3. GENERATE MIDDLE CHUNKS WITH JITTER
-    const middlePool: { mode: VehicleMode, duration: number, hash: number }[] = [];
+    // 3. BUILD MIRRORED MIDDLE
+    // closestMode is fully consumed by header/footer, exclude it from middle
+    const middleModes = activeModes.filter(m =>
+        remainingTime[m.id] > 0.01 && m.id !== closestMode?.id
+    );
 
-    activeModes.forEach(mode => {
-        const timeLeft = remainingTime[mode.id];
-        if (timeLeft <= 0.01) return;
+    if (middleModes.length > 0) {
+        const seqBase = middleModes.slice(0, Math.min(3, middleModes.length));
+        const mirrorSeq: VehicleMode[] =
+            seqBase.length > 1
+                ? [...seqBase, ...seqBase.slice(0, -1).reverse()]
+                : seqBase;
 
-        // Determine number of chunks (roughly every 20-40 mins)
-        const numChunks = Math.max(1, Math.ceil(timeLeft / 0.5));
-        let allocatedForMode = 0;
+        const slotCount: Record<string, number> = {};
+        mirrorSeq.forEach(m => { slotCount[m.id] = (slotCount[m.id] ?? 0) + 1; });
 
-        for (let i = 0; i < numChunks; i++) {
-            const chunkHash = hashString(`${mode.id}-${i}-${dateStr}`);
-            let chunkDur: number;
+        const baseDurPerSlot: Record<string, number> = {};
+        middleModes.forEach(m => {
+            baseDurPerSlot[m.id] = remainingTime[m.id] / (slotCount[m.id] ?? 1);
+        });
 
-            if (i === numChunks - 1) {
-                // Last chunk takes the absolute remainder to stay precise
-                chunkDur = timeLeft - allocatedForMode;
+        const assigned: Record<string, number> = {};
+        middleModes.forEach(m => { assigned[m.id] = 0; });
+
+        const seen: Record<string, number> = {};
+        middleModes.forEach(m => { seen[m.id] = 0; });
+
+        mirrorSeq.forEach((mode, i) => {
+            seen[mode.id] = (seen[mode.id] ?? 0) + 1;
+            const isLastSlot = seen[mode.id] === slotCount[mode.id];
+            let dur: number;
+
+            if (isLastSlot) {
+                dur = remainingTime[mode.id] - assigned[mode.id];
             } else {
-                // Base duration + deterministic jitter (-30% to +30%)
-                const baseDur = timeLeft / numChunks;
-                const jitter = ((chunkHash % 60) - 30) / 100;
-                chunkDur = baseDur * (1 + jitter);
-
-                // Keep it within reasonable bounds (min 5 mins)
-                chunkDur = Math.max(0.08, chunkDur);
-                allocatedForMode += chunkDur;
+                const posHash = hashString(`${mode.id}-mid-${i}-${dateStr}`);
+                const jitter  = ((posHash % 50) - 25) / 100;
+                dur = baseDurPerSlot[mode.id] * (1 + jitter);
+                dur = Math.max(0.05, dur);
+                assigned[mode.id] += dur;
             }
 
-            middlePool.push({
-                mode,
-                duration: chunkDur,
-                hash: chunkHash
-            });
-        }
-    });
-
-    // 4. DISTRIBUTE MIDDLE (Greedy & Persistent)
-    while (middlePool.length > 0) {
-        const lastModeId = segments[segments.length - 1]?.modeId;
-        middlePool.sort((a, b) => a.hash - b.hash);
-
-        let index = middlePool.findIndex(chunk => chunk.mode.id !== lastModeId);
-        if (index === -1) index = 0;
-
-        const [selected] = middlePool.splice(index, 1);
-        pushSegment(selected.mode, selected.duration);
+            pushSegment(mode, dur);
+        });
     }
 
-    // 5. EXECUTE END
+    // EXECUTE FOOTER
     endQueue.forEach(q => pushSegment(q.mode, q.dur));
 
     return segments;

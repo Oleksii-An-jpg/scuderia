@@ -13,7 +13,7 @@ import {
 } from "@chakra-ui/react";
 import {Controller, FormProvider, useFieldArray, useForm, useFormContext} from "react-hook-form";
 import { Tooltip } from '@/components/ui/tooltip'
-import {generateSurveyRoute, parseTargets, Target, WaypointData} from "@/lib/survey";
+import {generateSurveyRoute, parseTargets} from "@/lib/planning/id";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import FullScreen from 'leaflet.fullscreen';
@@ -29,6 +29,7 @@ import {
 import {CSS} from "@dnd-kit/utilities";
 import {useBoolean} from "usehooks-ts";
 import ClipboardIconButton from "@/components/ClipboardIconButton";
+import {Target, WaypointData} from "@/lib/planning/types";
 
 const MAX_FILES = 1;
 
@@ -128,7 +129,7 @@ const SortableItem: FC<SortableItemProps> = ({ id, children }) => {
     );
 }
 
-const SurveyRouteGenerator: FC = () => {
+const IDSurveyRouteGenerator: FC = () => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const methods = useForm<Values>({
@@ -285,7 +286,7 @@ const SurveyRouteGenerator: FC = () => {
 
     return (
         <VStack align="stretch">
-            <Heading>Survey Pattern Route Generator</Heading>
+            <Heading>ID Mission Survey Pattern Route Generator</Heading>
             <FormProvider {...methods}>
                 <VStack gap={4} as="form" align="stretch" onSubmit={handleSubmit((data) => {
                     const { output, waypoints } = generateSurveyRoute(data.contacts, {
@@ -381,4 +382,4 @@ const SurveyRouteGenerator: FC = () => {
     );
 };
 
-export default SurveyRouteGenerator;
+export default IDSurveyRouteGenerator;

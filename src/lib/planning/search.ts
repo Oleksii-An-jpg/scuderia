@@ -136,7 +136,7 @@ export const generateHuginMP = (waypoints: Waypoint[], speed: number): string[] 
 
         let courseVal = Math.round(wp.bearing) % 360;
         if (courseVal < 0) courseVal += 360;
-        let courseStr = `(${courseVal.toString().padStart(3, '0')})`;
+        const courseStr = `(${courseVal.toString().padStart(3, '0')})`;
 
         let dist = '-';
         let dur = '-';

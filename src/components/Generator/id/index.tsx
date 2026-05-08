@@ -321,7 +321,7 @@ const IDSurveyRouteGenerator: FC = () => {
                                             {/*<Field.Root><Input size="sm" disabled {...register(`contacts.${i}.id`)} /></Field.Root>*/}
                                             <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.numTracks`, {valueAsNumber: true})} /></Field.Root>
                                             <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.spacing`, {valueAsNumber: true})} /></Field.Root>
-                                            <Field.Root><Input size="sm" type="number" step={1} {...register(`contacts.${i}.bearing`, {valueAsNumber: true})} /></Field.Root>
+                                            <Field.Root><Input size="sm" type="number" step={0.1} {...register(`contacts.${i}.bearing`, {valueAsNumber: true})} /></Field.Root>
                                             <GridItem>
                                                 <IconButton size="sm" colorPalette="red" variant="outline" onClick={() => {
                                                     remove(i);

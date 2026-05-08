@@ -246,7 +246,7 @@ export const formatWaypointLine = (waypoint: WaypointData, prevBearing?: number,
         : (distance !== undefined ? `(${Math.round(distance)})`.padStart(7) : '='.padStart(7));
 
     // Flags: auto for leadin_a
-    const flagsPart = isFirstLeadin ? '  auto' : waypoint.isFirstTurn ? '2GROff' : waypoint.isFirstGall ? '2GROn' : '';
+    const flagsPart = isFirstLeadin ? '  auto' : waypoint.isFirstTurn ? ' 2GROff' : waypoint.isFirstGall ? ' 2GROn' : '';
 
     return `${tagPart} ${depthPart} ${altPart} ${dmoPart} ${coordPart} ${coursePart} ${gmo} ${rpm} ${speed} ${smo} ${durPart} ${distPart}${flagsPart}`;
 };

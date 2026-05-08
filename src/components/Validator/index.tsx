@@ -73,6 +73,30 @@ function getFlags(parts: string[]): string {
     return parts.slice(COL.FLAGS_START).filter(f => f !== "-").join(" ");
 }
 
+// ─── Required flags per tag ───────────────────────────────────────────────────
+// Tags that must carry exactly these flags (order-insensitive, extras allowed)
+
+const REQUIRED_FLAGS: Record<string, string[]> = {
+    sas_on:   ["SASPowerOn"],
+    em_on:    ["EMPowerOn"],
+    crit_h:   ["CritHeight3"],
+    safe_h:   ["SafeDist6"],
+    flntu_on: ["FLNTUPowerOn"],
+    fls_on:   ["FLSPowerOn"],
+    roll_ctr: ["RollCtrlOn"],
+    dist:     ["DistTrigger"],
+    // post-init block
+    sas_hp:   ["SASHighPower"],
+    sas_ol4:  ["SASOverlap4"],
+    sas_sw:   ["SASMode1"],
+    sas_imp:  ["SASIMSOn"],
+    sas_act:  ["SASOn"],
+    em_ext:   ["EM400Ext"],
+    em_act:   ["EMOn"],
+    // other specific tags
+    ascent:   ["ascent"],
+};
+
 // ─── Validator ────────────────────────────────────────────────────────────────
 
 export function validateMissionPlan(input: string): {
@@ -114,7 +138,7 @@ export function validateMissionPlan(input: string): {
         if (tagCount[r.tag] > 1) r.errors.push("duplicate tag");
     }
 
-    // ── Init block: required tags with dur=2 ─────────────────────────────────
+    // ── Init block: required tags with dur=2 and required flags ──────────────
     for (const t of REQUIRED_INIT_TAGS) {
         const r = data.find(r => r.tag === t);
         if (!r) continue;
@@ -146,6 +170,63 @@ export function validateMissionPlan(input: string): {
         if (dur !== 2) r.errors.push(`duration must be 2 (got ${r.parts[COL.DUR]})`);
     }
 
+    // ── Required flags per tag ────────────────────────────────────────────────
+    for (const r of data) {
+        const required = REQUIRED_FLAGS[r.tag];
+        if (!required) continue;
+        const f = getFlags(r.parts);
+        for (const flag of required) {
+            if (!f.includes(flag)) r.errors.push(`missing required flag "${flag}"`);
+        }
+    }
+
+    // ── home: must have both uuv and SASOff, near the end ────────────────────
+    const homeRow = data.find(r => r.tag === "home");
+    if (homeRow) {
+        const f = getFlags(homeRow.parts);
+        if (!f.includes("uuv")) homeRow.errors.push(`missing required flag "uuv"`);
+        if (!f.includes("SASOff")) homeRow.errors.push(`missing required flag "SASOff"`);
+        // home should be in the last 20% of waypoints
+        const homePos = data.indexOf(homeRow);
+        if (homePos < data.length * 0.8) {
+            homeRow.warns.push(`home appears early in the plan (line ${homeRow.lineNum}/${data.length}) — expected near the end`);
+        }
+    }
+
+    // ── ltr4: next=N must point to ltr1's line number ────────────────────────
+    const ltr1Row = data.find(r => r.tag === "ltr1");
+    const ltr4Row = data.find(r => r.tag === "ltr4");
+    if (ltr4Row) {
+        const f = getFlags(ltr4Row.parts);
+        const nextMatch = f.match(/next=(\d+)/);
+        if (!nextMatch) {
+            ltr4Row.errors.push(`missing "next=N" flag`);
+        } else if (ltr1Row) {
+            const nextVal = parseInt(nextMatch[1], 10);
+            if (nextVal !== ltr1Row.lineNum) {
+                ltr4Row.errors.push(
+                    `next=${nextVal} should point to ltr1 (line ${ltr1Row.lineNum})`
+                );
+            }
+        }
+    }
+
+    // ── leadin: first one must be T-mode + speed k + auto; subsequent ones just need auto ──
+    const leadinRows = data.filter(r => r.tag === "leadin");
+    leadinRows.forEach((r, idx) => {
+        const f = getFlags(r.parts);
+        const dmo = r.parts[COL.DMO];
+        const speed = r.parts[COL.SPEED];
+        if (!f.includes("auto")) r.errors.push(`missing required flag "auto"`);
+        if (idx === 0) {
+            // First leadin must be T mode
+            if (dmo !== "T") r.errors.push(`first leadin must use T (terrain-following) mode, got "${dmo}"`);
+            if (!speed.endsWith("k") && speed !== "=") {
+                r.errors.push(`first leadin T mode must use speed control (k), not RPM`);
+            }
+        }
+    });
+
     // ── Per-row rules ─────────────────────────────────────────────────────────
     for (let i = 0; i < data.length; i++) {
         const r = data[i];
@@ -153,18 +234,6 @@ export function validateMissionPlan(input: string): {
         const dmo = p[COL.DMO];
         const smo = p[COL.SMO];
         const rpm = p[COL.RPM];
-        const speed = p[COL.SPEED];
-        const f = getFlags(p);
-
-        // leadin: T mode → speed (k); must have 'auto'
-        if (r.tag === "leadin") {
-            if (dmo === "T") {
-                if (speed !== "=" && !speed.endsWith("k")) {
-                    r.errors.push("leadin T mode must use speed control (k), not RPM");
-                }
-            }
-            if (!f.includes("auto")) r.errors.push(`leadin missing "auto" flag`);
-        }
 
         // D mode → RPM control (R or inherited =)
         if (dmo === "D" && smo !== "R" && smo !== "=" && smo !== "-") {
@@ -177,12 +246,6 @@ export function validateMissionPlan(input: string): {
             if (rpmVal !== null && rpmVal !== 160) {
                 r.errors.push(`surface RPM must be 160 (got ${rpm})`);
             }
-        }
-
-        // home → 'uuv' and 'SASOff'
-        if (r.tag === "home") {
-            if (!f.includes("uuv")) r.errors.push(`home missing "uuv" flag`);
-            if (!f.includes("SASOff")) r.errors.push(`home missing "SASOff" flag`);
         }
 
         // 5 m dive → preceding line must set 200 RPM

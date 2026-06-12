@@ -90,10 +90,17 @@ function buildSheet(roadLists: CalculatedRoadList[], vehicleConfig: VehicleConfi
 
         // Totals row
         const totalHours = safeNum(rl.hours);
+        const modeTotals = modes.map(m =>
+            rl.itineraries.reduce((sum, it) => {
+                // @ts-expect-error: dynamic keys
+                const v = it[m.id];
+                return sum + (typeof v === 'number' && !isNaN(v) ? v : 0);
+            }, 0) || ''
+        );
         rows.push([
             'РАЗОМ',
             '',
-            ...modes.map(() => ''),
+            ...modeTotals,
             totalHours !== '' ? (boat ? decimalToTimeString(totalHours) : Math.round(totalHours)) : '',
             safeNum(rl.fuel) !== '' ? Math.round(safeNum(rl.fuel) as number) : '',
             safeNum(rl.cumulativeReceivedFuel) !== '' ? Math.round(safeNum(rl.cumulativeReceivedFuel) as number) : '',

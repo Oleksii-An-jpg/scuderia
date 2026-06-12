@@ -118,5 +118,5 @@ export function exportAllVehiclesToXlsx(
     }
 
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    saveAs(new Blob([buf], { type: 'application/octet-stream' }), 'дорожні-листи.xlsx');
+    saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'дорожні-листи.xlsx');
 }

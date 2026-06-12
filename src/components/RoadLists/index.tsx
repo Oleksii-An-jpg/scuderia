@@ -23,7 +23,8 @@ import { onSnapshot, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
-import {BiAnchor, BiUser, BiPlus} from "react-icons/bi";
+import {BiAnchor, BiUser, BiPlus, BiDownload} from "react-icons/bi";
+import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
 import Image from "next/image";
 
 type RoadListProps = {
@@ -40,6 +41,8 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
     const fetchAll = useStore(state => state.fetchAll);
 
     const vehicles = useVehicleStore(state => state.activeVehicles);
+    const allVehicleConfigs = useVehicleStore(state => state.vehicles);
+    const calculatedCache = useStore(state => state.calculatedCache);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -247,14 +250,25 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                     </Tabs.Root>
                 </Card.Body>
                 <Card.Footer shadow="inset" className="bg-white sticky bottom-0">
-                    <Box pt={4}>
+                    <HStack pt={4}>
                         <Button variant="solid" colorPalette="green" size="lg" onClick={() => handleOpenForm()}>
                             <Icon>
                                 <BiPlus />
                             </Icon>
                             Додати дорожній лист
                         </Button>
-                    </Box>
+                        <Button
+                            variant="outline"
+                            colorPalette="blue"
+                            size="lg"
+                            onClick={() => exportAllVehiclesToXlsx(calculatedCache, allVehicleConfigs)}
+                        >
+                            <Icon>
+                                <BiDownload />
+                            </Icon>
+                            Завантажити xlsx
+                        </Button>
+                    </HStack>
                 </Card.Footer>
             </Card.Root>
 

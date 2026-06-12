@@ -10,6 +10,11 @@ function fmtDate(d: Date) {
     return DATE_FMT.format(d);
 }
 
+function safeNum(v: number | null | undefined): number | '' {
+    if (v == null || isNaN(v)) return '';
+    return v;
+}
+
 function fmtHours(val: number, boat: boolean) {
     return boat ? decimalToTimeString(val) : String(Math.round(val));
 }
@@ -17,6 +22,7 @@ function fmtHours(val: number, boat: boolean) {
 function fmtEngineHours(val: number | { left: number; right: number } | null | undefined, boat: boolean): string {
     if (val == null) return '';
     if (typeof val === 'object') return `л:${decimalToTimeString(val.left)} п:${decimalToTimeString(val.right)}`;
+    if (isNaN(val)) return '';
     return fmtHours(val, boat);
 }
 
@@ -65,31 +71,33 @@ function buildSheet(roadLists: CalculatedRoadList[], vehicleConfig: VehicleConfi
             const modeValues = modes.map(m => {
                 // @ts-expect-error: dynamic keys
                 const v = it[m.id];
-                return v != null ? v : '';
+                return safeNum(v as number | null | undefined);
             });
 
+            const rowHours = safeNum(it.rowHours);
             rows.push([
                 fmtDate(it.date),
-                it.br != null ? it.br : '',
+                safeNum(it.br),
                 ...modeValues,
-                it.rowHours != null ? (boat ? decimalToTimeString(it.rowHours) : Math.round(it.rowHours)) : '',
-                it.rowConsumed != null ? Math.round(it.rowConsumed) : '',
-                it.fuel != null ? it.fuel : '',
-                it.cumulativeFuel != null ? Math.round(it.cumulativeFuel) : '',
+                rowHours !== '' ? (boat ? decimalToTimeString(rowHours) : Math.round(rowHours)) : '',
+                safeNum(it.rowConsumed) !== '' ? Math.round(safeNum(it.rowConsumed) as number) : '',
+                safeNum(it.fuel),
+                safeNum(it.cumulativeFuel) !== '' ? Math.round(safeNum(it.cumulativeFuel) as number) : '',
                 fmtEngineHours(it.cumulativeHours, boat),
                 it.comment ?? '',
             ]);
         }
 
         // Totals row
+        const totalHours = safeNum(rl.hours);
         rows.push([
             'РАЗОМ',
             '',
             ...modes.map(() => ''),
-            boat ? decimalToTimeString(rl.hours) : Math.round(rl.hours),
-            Math.round(rl.fuel),
-            Math.round(rl.cumulativeReceivedFuel),
-            Math.round(rl.cumulativeFuel),
+            totalHours !== '' ? (boat ? decimalToTimeString(totalHours) : Math.round(totalHours)) : '',
+            safeNum(rl.fuel) !== '' ? Math.round(safeNum(rl.fuel) as number) : '',
+            safeNum(rl.cumulativeReceivedFuel) !== '' ? Math.round(safeNum(rl.cumulativeReceivedFuel) as number) : '',
+            safeNum(rl.cumulativeFuel) !== '' ? Math.round(safeNum(rl.cumulativeFuel) as number) : '',
             fmtEngineHours(rl.cumulativeHours, boat),
             '',
         ]);

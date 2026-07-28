@@ -1,0 +1,35 @@
+'use server'
+
+import {adminAuth, getUser} from "@/lib/firebaseAdmin";
+import {cookies} from "next/headers";
+import {redirect} from "next/navigation";
+import {ReactNode} from "react";
+
+const ROLES = ['editor', 'admin', 'viewer'] as const;
+
+export default async function ScuderiaLayout({ children }: { children: ReactNode }) {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session');
+
+    if (!sessionCookie) redirect("/auth");
+
+    try {
+        const decoded = await adminAuth.verifySessionCookie(sessionCookie.value, true);
+        if (decoded.role == null) {
+            const user = await getUser(decoded.uid);
+            if (user.customClaims?.role != null) {
+                const role = user.customClaims?.role;
+
+                if (!ROLES.includes(role)) {
+                    redirect("/403")
+                }
+            }
+        } else if (!ROLES.includes(decoded.role)) {
+            redirect("/403")
+        }
+    } catch {
+        redirect("/auth");
+    }
+
+    return children
+}

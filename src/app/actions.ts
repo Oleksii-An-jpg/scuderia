@@ -18,6 +18,10 @@ export async function createSession(token: string) {
 
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
+    if (decoded.role === 'editor' || decoded.role === 'viewer') {
+        redirect('/')
+    }
+
     if (decoded.role === 'admin') {
         redirect('/admin')
     } else {

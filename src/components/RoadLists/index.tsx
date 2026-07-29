@@ -20,12 +20,14 @@ import { Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
 import { onSnapshot, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {auth, db} from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
-import {BiAnchor, BiUser, BiPlus, BiDownload} from "react-icons/bi";
+import {BiAnchor, BiPlus, BiDownload} from "react-icons/bi";
 import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
 import Image from "next/image";
+import {signOut} from "firebase/auth";
+import {deleteSession} from "@/app/actions";
 
 type RoadListProps = {
     role?: string;
@@ -167,6 +169,11 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         );
     }
 
+    async function handleLogout() {
+        await signOut(auth);
+        await deleteSession();
+    }
+
     return (
         <VStack alignItems="stretch">
             <Card.Root>
@@ -180,10 +187,8 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             <ChakraLink asChild>
                                 <Link href="/admin"><BiAnchor /> Адмінка</Link>
                             </ChakraLink>
-                        </Button> : role == null && <Button colorPalette="blue" asChild>
-                            <ChakraLink asChild>
-                                <Link href="/auth"><BiUser /> Авторизуватись</Link>
-                            </ChakraLink>
+                        </Button> : <Button colorPalette="blue" onClick={handleLogout}>
+                            Вийти
                         </Button>}
                     </HStack>
                 </Card.Header>

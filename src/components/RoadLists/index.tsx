@@ -11,7 +11,7 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink, Box, Icon, HoverCard
+    Link as ChakraLink, Box, Icon, HoverCard, ButtonGroup
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -183,14 +183,16 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             <Image src="/easter-egg.png" alt="easter-egg" width={60} height={60} />
                         </Box>
                         <Text>Дорожні листи</Text>
-                        {role === 'admin' ? <Button colorPalette="yellow" asChild>
-                            <ChakraLink asChild>
-                                <Link href="/admin"><BiAnchor /> Адмінка</Link>
-                            </ChakraLink>
-                        </Button> : null}
-                        <Button colorPalette="blue" onClick={handleLogout}>
-                            Вийти
-                        </Button>
+                        <ButtonGroup>
+                            {role === 'admin' ? <Button colorPalette="yellow" asChild>
+                                <ChakraLink asChild>
+                                    <Link href="/admin"><BiAnchor /> Адмінка</Link>
+                                </ChakraLink>
+                            </Button> : null}
+                            <Button colorPalette="blue" onClick={handleLogout}>
+                                Вийти
+                            </Button>
+                        </ButtonGroup>
                     </HStack>
                 </Card.Header>
                 <Card.Body>

@@ -13,11 +13,10 @@ import {
     ConfirmationResult,
 } from "firebase/auth";
 import {createSession, deleteSession} from "@/app/actions";
-import {AbsoluteCenter, Link as ChakraLink, Box, Button, Container, VStack, Alert, Field, Input, Separator, PinInput, Text} from "@chakra-ui/react";
+import {AbsoluteCenter, Box, Button, Container, VStack, Alert, Field, Input, Separator, PinInput, Text} from "@chakra-ui/react";
 import {useForm, Controller} from "react-hook-form";
 import {useBoolean} from "usehooks-ts";
-import {BiHome, BiLogoGoogle} from "react-icons/bi";
-import Link from "next/link";
+import {BiLogoGoogle} from "react-icons/bi";
 
 type Values = {
     phoneNumber: string;
@@ -206,11 +205,6 @@ export default function Auth() {
                             >
                                 <BiLogoGoogle />
                                 Зайти через Ґуґл
-                            </Button>
-                            <Button variant="subtle" asChild>
-                                <ChakraLink asChild>
-                                    <Link href="/"><BiHome /> Головна</Link>
-                                </ChakraLink>
                             </Button>
                         </VStack>
                     ) : (

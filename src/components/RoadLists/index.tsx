@@ -187,9 +187,10 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             <ChakraLink asChild>
                                 <Link href="/admin"><BiAnchor /> Адмінка</Link>
                             </ChakraLink>
-                        </Button> : <Button colorPalette="blue" onClick={handleLogout}>
+                        </Button> : null}
+                        <Button colorPalette="blue" onClick={handleLogout}>
                             Вийти
-                        </Button>}
+                        </Button>
                     </HStack>
                 </Card.Header>
                 <Card.Body>

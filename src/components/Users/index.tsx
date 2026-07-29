@@ -153,7 +153,7 @@ const Users: FC<UserProps> = ({ users }) => {
     );
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
-        pageSize: 10,
+        pageSize: 100,
     });
     const table = useReactTable({
         columns,

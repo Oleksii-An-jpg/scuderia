@@ -4,6 +4,8 @@ import { adminAuth, getUser } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import {Alert, VStack} from "@chakra-ui/react";
+import SignOut from "@/components/SignOut";
 
 const ROLES = ['editor', 'admin', 'viewer'] as const;
 
@@ -23,7 +25,18 @@ export default async function ScuderiaLayout({ children }: { children: ReactNode
         }
 
         if (role == null || !ROLES.includes(role)) {
-            redirect("/403");
+            return <VStack>
+                <Alert.Root status="warning">
+                    <Alert.Indicator />
+                    <Alert.Content>
+                        <Alert.Title>Доступ заборонено</Alert.Title>
+                        <Alert.Description>
+                            Вам потрібні права адміністратора для доступу до цією сторінки. Для отримання таких прав, зв&#39;яжіться з командиром.
+                        </Alert.Description>
+                    </Alert.Content>
+                    <SignOut />
+                </Alert.Root>
+            </VStack>
         }
     } catch {
         redirect("/auth");

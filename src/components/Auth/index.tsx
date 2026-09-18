@@ -295,6 +295,7 @@ export default function Auth() {
                                             name="code"
                                             render={({ field }) => (
                                                 <PinInput.Root
+                                                    otp
                                                     w="full"
                                                     value={field.value}
                                                     onValueChange={(e) => field.onChange(e.value)}

@@ -1,35 +1,14 @@
 'use server'
 
-import {adminAuth, getUser} from "@/lib/firebaseAdmin";
-import {cookies} from "next/headers";
-import {redirect} from "next/navigation";
 import {ReactNode} from "react";
 import {Card, HStack} from "@chakra-ui/react";
 import Navigation from "@/components/Navigation";
+import {requireAdminPage} from "@/lib/auth";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session');
-
-    if (!sessionCookie) redirect("/auth");
-
-    try {
-        const decoded = await adminAuth.verifySessionCookie(sessionCookie.value, true);
-        if (decoded.role == null) {
-            const user = await getUser(decoded.uid);
-            if (user.customClaims?.role != null) {
-                const role = user.customClaims?.role;
-
-                if (role !== 'admin') {
-                    redirect("/403")
-                }
-            }
-        } else if (decoded.role !== 'admin') {
-            redirect("/403")
-        }
-    } catch {
-        redirect("/auth");
-    }
+    // Guards the pages in this group only: route handlers are not wrapped by a
+    // layout, so each one under admin/api runs authorizeAdminRequest() itself.
+    await requireAdminPage();
 
     return <HStack align="start" gap={8}>
         <Navigation />

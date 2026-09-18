@@ -13,7 +13,7 @@ import {
     ConfirmationResult,
 } from "firebase/auth";
 import {createSession, deleteSession} from "@/app/actions";
-import {AbsoluteCenter, Box, Button, Container, VStack, Alert, Field, Input, Separator, PinInput, Text} from "@chakra-ui/react";
+import {AbsoluteCenter, Box, Button, Container, InputGroup, VStack, Alert, Field, Input, Separator, PinInput, Text} from "@chakra-ui/react";
 import {useForm, Controller} from "react-hook-form";
 import {useBoolean} from "usehooks-ts";
 import {BiLogoGoogle} from "react-icons/bi";
@@ -259,13 +259,30 @@ export default function Auth() {
                             <form className="w-full" onSubmit={(e) => e.preventDefault()}>
                                 {/* PHONE INPUT */}
                                 <VStack align="stretch" gap={4}>
-                                    <Field.Root disabled={loading || !!conf} orientation="horizontal">
+                                    <Field.Root
+                                        required
+                                        disabled={loading || !!conf}
+                                        invalid={!!errors.phoneNumber}
+                                        orientation="horizontal"
+                                    >
                                         <Field.Label>Телефон</Field.Label>
-                                        <Input
-                                            {...register('phoneNumber')}
-                                            type="tel"
-                                            placeholder="+380..."
-                                        />
+                                        <InputGroup startElement="+380">
+                                            <Input
+                                                ps="6ch"
+                                                type="tel"
+                                                placeholder="+380501234567"
+                                                {...register('phoneNumber', {
+                                                    setValueAs(value: string) {
+                                                        return `+380${value.split(' ').join('')}`
+                                                    },
+                                                    pattern: {
+                                                        value: /^\+380\d{9}$/,
+                                                        message: 'Номер телефону має містити 9 цифр',
+                                                    },
+                                                })}
+                                            />
+                                        </InputGroup>
+                                        <Field.ErrorText>{errors.phoneNumber?.message}</Field.ErrorText>
                                     </Field.Root>
                                     <Field.Root disabled={!conf} orientation="horizontal" invalid={!!errors.code}>
                                         <Field.Label>Код (смс)</Field.Label>

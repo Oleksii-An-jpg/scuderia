@@ -25,9 +25,15 @@ export type RoadList = {
     roadListID?: string;
     start: Date;
     end: Date;
+    // Opening balance. Only read when this is the first road list of a vehicle's
+    // chain, or when resetBalance is set; otherwise the balance is carried forward
+    // from the previous road list. See calculateRoadListChain.
     startFuel: number;
     // For boats: { left, right }, for cars: just a number (km)
     startHours: EngineHours | number;
+    // Opt in to using this road list's own startFuel/startHours instead of the
+    // values carried forward, to correct a drifted remainder mid-history.
+    resetBalance?: boolean;
     itineraries: Itinerary[];
 }
 
@@ -53,6 +59,10 @@ export type CalculatedRoadList = RoadList & {
     itineraries: CalculatedItinerary[];
     hours: number;
     fuel: number;
+    // The opening balance actually used, after carry-forward. Display this rather
+    // than startFuel/startHours, which are only meaningful when they open a chain.
+    openingFuel: number;
+    openingHours: EngineHours | number;
     cumulativeHours: EngineHours | number;
     cumulativeFuel: number;
     cumulativeReceivedFuel: number;

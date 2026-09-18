@@ -47,9 +47,9 @@ function buildSheet(roadLists: CalculatedRoadList[], vehicleConfig: VehicleConfi
 
         // Start-of-period info row
         rows.push([
-            `Паливо на початок: ${Math.round(rl.startFuel)} л.`,
+            `Паливо на початок: ${Math.round(rl.openingFuel)} л.`,
             '',
-            `${boat ? 'Мотогодини' : 'Одометр'} на початок: ${fmtEngineHours(rl.startHours, boat)}`,
+            `${boat ? 'Мотогодини' : 'Одометр'} на початок: ${fmtEngineHours(rl.openingHours, boat)}`,
         ]);
 
         // Column header row

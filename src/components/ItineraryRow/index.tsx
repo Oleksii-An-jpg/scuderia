@@ -32,7 +32,9 @@ type Props = {
     index: number;
     vehicle: Vehicle;
     calculated?: CalculatedItinerary;
-    onRemove: () => void;
+    // Takes the index so the handler stays referentially stable across renders;
+    // an inline closure here would defeat the memo() below.
+    onRemove: (index: number) => void;
     isLast: boolean;
 }
 
@@ -106,7 +108,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                             <Text flexShrink="0" as="b">Технічне обслуговування</Text>
                             <Separator flex="1" />
                             <IconButton
-                                onClick={onRemove}
+                                onClick={() => onRemove(index)}
                                 size="xs"
                                 colorPalette="red"
                                 variant="outline"
@@ -286,7 +288,7 @@ const ItineraryRow: FC<Props> = ({ index, vehicle, calculated, onRemove, isLast 
                                     </Popover.Positioner>
                                 </Popover.Root>
                                 <IconButton
-                                    onClick={onRemove}
+                                    onClick={() => onRemove(index)}
                                     size="xs"
                                     colorPalette="red"
                                     variant="outline"

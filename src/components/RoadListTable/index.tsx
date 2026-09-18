@@ -171,9 +171,9 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
 
                             return (
                                 <>{isBoat(vehicleConfig) ? <HStack>
-                                    <Clip startElement="л" value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.left) : undefined} />
-                                    <Clip startElement="п" value={typeof model.startHours === 'object' ? decimalToTimeString(model.startHours.right) : undefined} />
-                                </HStack> : <Clip value={typeof model.startHours === 'number' ? String(Math.round(model.startHours)) : undefined} />}</>
+                                    <Clip startElement="л" value={typeof model.openingHours === 'object' ? decimalToTimeString(model.openingHours.left) : undefined} />
+                                    <Clip startElement="п" value={typeof model.openingHours === 'object' ? decimalToTimeString(model.openingHours.right) : undefined} />
+                                </HStack> : <Clip value={typeof model.openingHours === 'number' ? String(Math.round(model.openingHours)) : undefined} />}</>
                             );
                         }
                     },
@@ -206,7 +206,7 @@ const RoadListTable: FC<Props> = ({ loading, roadLists, onOpen, onDelete }) => {
                         enableSorting: false,
                         cell: info => {
                             const model = info.row.original;
-                            return <Text fontWeight="bold">{Math.round(model.startFuel)}</Text>;
+                            return <Text fontWeight="bold">{Math.round(model.openingFuel)}</Text>;
                         },
                     },
                     {

@@ -1,5 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment variables
+
+Copy `.env.example` to `.env` and fill in the values before running the app:
+
+```bash
+cp .env.example .env
+```
+
+`.env` is ignored by git and must never be committed. `FIREBASE_PRIVATE_KEY` is a
+service-account credential with full admin access to the Firebase project; treat it
+like a password. For deployments, set the same variables as secrets in the hosting
+platform rather than shipping a `.env` file.
+
 ## Getting Started
 
 First, run the development server:

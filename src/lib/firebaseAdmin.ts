@@ -8,12 +8,39 @@ import { adminConverter } from "@/lib/converter";
 import { adminVehicleConverter, toSerializableVehicle } from '@/lib/vehicleConverter';
 import {getAuth, UserRecord} from "firebase-admin/auth";
 
+/**
+ * Rebuild the PEM from whatever a deployment platform did to it.
+ *
+ * The key only ever travels as a single environment variable, and the line
+ * breaks rarely survive the trip: a dashboard field can fold them into spaces
+ * or drop them, and a value copied out of .env.example keeps its wrapping
+ * quotes. None of that is visible at startup, because cert() only checks that
+ * the key is a string - the first thing to notice is OpenSSL failing to decode
+ * it, much later, on the first call that needs an access token.
+ *
+ * So take the base64 body, ignore whatever separated it, and lay it back out
+ * the way OpenSSL expects.
+ */
+function normalizePrivateKey(raw: string | undefined): string | undefined {
+    if (!raw) return raw;
+
+    const key = raw.replace(/\\n/g, "\n").trim().replace(/^["']|["']$/g, "");
+    const match = key.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
+
+    if (!match) return key;
+
+    const [, label, body] = match;
+    const lines = body.replace(/\s+/g, "").match(/.{1,64}/g) ?? [];
+
+    return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----\n`;
+}
+
 const app = !getApps().length
     ? initializeApp({
         credential: cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+            privateKey: normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
         }),
         storageBucket: 'scuderia-docs'
     })

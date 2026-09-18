@@ -102,6 +102,19 @@ function describeError(err: unknown): { type: string; message: string } {
         return { type: known.title, message: known.description };
     }
 
+    // An error thrown inside a server action reaches the browser stripped of its
+    // message and its code - only the digest survives. Showing the digest is the
+    // difference between 'unknown' and a string that finds the real error in the
+    // server log.
+    const digest = (err as { digest?: unknown })?.digest;
+
+    if (!code && typeof digest === 'string') {
+        return {
+            type: "Помилка на сервері",
+            message: `Вхід виконано, але не вдалося створити сесію. Покажіть адміністратору код: ${digest}`,
+        };
+    }
+
     return {
         type: "Помилка входу",
         message: `Не вдалося увійти. Код помилки: ${code ?? 'unknown'}`,

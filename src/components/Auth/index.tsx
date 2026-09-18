@@ -270,7 +270,7 @@ export default function Auth() {
                                             <Input
                                                 ps="6ch"
                                                 type="tel"
-                                                placeholder="+380501234567"
+                                                placeholder="501234567"
                                                 {...register('phoneNumber', {
                                                     setValueAs(value: string) {
                                                         return `+380${value.split(' ').join('')}`

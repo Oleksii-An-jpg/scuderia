@@ -12,8 +12,13 @@ export function calculateRoadList(
     startMaintenanceFuel?: number,
     hasMaintenanceRecords?: boolean
 ): CalculatedRoadList {
-    let cumulativeHours: EngineHours | number = startHours ?? roadList.startHours;
-    let cumulativeFuel = startFuel ?? roadList.startFuel;
+    const openingHours: EngineHours | number = startHours ?? roadList.startHours;
+    const openingFuel = startFuel ?? roadList.startFuel;
+
+    let cumulativeHours: EngineHours | number = typeof openingHours === 'object'
+        ? { ...openingHours }
+        : openingHours;
+    let cumulativeFuel = openingFuel;
     let cumulativeReceivedFuel = 0;
     let cumulativeHoursFromRecentMaintenance: EngineHours | number = startMaintenanceHours ?? (isBoat(vehicleConfig) ? { left: 0, right: 0 } : 0);
     let cumulativeFuelFromRecentMaintenance = startMaintenanceFuel ?? 0;
@@ -103,6 +108,8 @@ export function calculateRoadList(
         itineraries: enhancedItineraries,
         hours: totalHours,
         fuel: totalFuel,
+        openingFuel,
+        openingHours: typeof openingHours === 'object' ? { ...openingHours } : openingHours,
         cumulativeHours: typeof cumulativeHours === 'object'
             ? { ...cumulativeHours }
             : cumulativeHours,
@@ -120,7 +127,11 @@ export function calculateRoadListChain(
 ): CalculatedRoadList[] {
     const results: CalculatedRoadList[] = [];
 
-    // Track state across roadLists
+    // Track state across roadLists. The balance is carried forward here rather than
+    // read back off each document, so editing or deleting one road list never
+    // requires rewriting the ones after it.
+    let previousFuel: number | undefined;
+    let previousHours: EngineHours | number | undefined;
     let previousMaintenanceHours: EngineHours | number | undefined;
     let previousMaintenanceFuel: number | undefined;
     let hasMaintenanceRecords = false;
@@ -134,8 +145,12 @@ export function calculateRoadListChain(
             throw new Error(`Vehicle config not found for: ${current.vehicle}`);
         }
 
-        const startFuel = current.startFuel;
-        const startHours = current.startHours;
+        // The first road list of a chain opens the balance; so does one that
+        // explicitly resets it. Every other road list continues from the previous.
+        const opensBalance = previousFuel === undefined || previousHours === undefined || !!current.resetBalance;
+
+        const startFuel = opensBalance ? current.startFuel : previousFuel;
+        const startHours = opensBalance ? current.startHours : previousHours;
 
         // Pass maintenance state from previous roadList
         const calculated = calculateRoadList(
@@ -154,6 +169,8 @@ export function calculateRoadListChain(
         }
         previousMaintenanceHours = calculated.cumulativeHoursFromRecentMaintenance;
         previousMaintenanceFuel = calculated.cumulativeFuelFromRecentMaintenance;
+        previousFuel = calculated.cumulativeFuel;
+        previousHours = calculated.cumulativeHours;
 
         results.push(calculated);
     }

@@ -1,7 +1,7 @@
 // src/components/RoadLists/index.tsx
 
 'use client';
-import {FC, useEffect, useMemo, useRef, useState} from 'react';
+import {FC, useEffect, useMemo, useState} from 'react';
 import {
     Card,
     VStack,
@@ -16,11 +16,10 @@ import {
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
 import { getModes, isBoat } from '@/types/vehicle';
-import { Itinerary, RoadList } from '@/types/roadList';
+import { EngineHours, Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
-import { onSnapshot, collection } from "firebase/firestore";
-import {auth, db} from "@/lib/firebase";
+import {auth, subscribeToRoadLists} from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
 import {BiAnchor, BiPlus, BiDownload} from "react-icons/bi";
@@ -33,6 +32,16 @@ type RoadListProps = {
     role?: string;
 }
 
+export type Balance = {
+    fuel: number;
+    hours: EngineHours | number;
+}
+
+function balanceAfter(previous?: { cumulativeFuel: number; cumulativeHours: EngineHours | number }): Balance | null {
+    if (!previous) return null;
+    return { fuel: previous.cumulativeFuel, hours: previous.cumulativeHours };
+}
+
 const RoadLists: FC<RoadListProps> = ({ role }) => {
     const loading = useStore(state => state.loading);
     const selectedVehicle = useStore(state => state.selectedVehicle);
@@ -40,7 +49,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
     const getByVehicle = useStore(state => state.getByVehicle);
     const getById = useStore(state => state.getById);
     const deleteRoadList = useStore(state => state.delete);
-    const fetchAll = useStore(state => state.fetchAll);
+    const hydrate = useStore(state => state.hydrate);
 
     const vehicles = useVehicleStore(state => state.activeVehicles);
     const allVehicleConfigs = useVehicleStore(state => state.vehicles);
@@ -51,28 +60,9 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const loadingRef = useRef(loading);
-
-    useEffect(() => {
-        loadingRef.current = loading;
-    }, [loading]);
-
-    useEffect(() => {
-        let isInitial = true;
-
-        const unsub = onSnapshot(collection(db(), "road-lists"), snap => {
-            if (isInitial) {
-                isInitial = false;
-                return;
-            }
-
-            if (!loadingRef.current) {
-                fetchAll();
-            }
-        });
-
-        return () => unsub();
-    }, []);
+    // Hydrate straight from the subscription payload. It already carries every
+    // document, so there is nothing left to fetch when something changes.
+    useEffect(() => subscribeToRoadLists(roadLists => hydrate(roadLists)), [hydrate]);
 
     // Set initial selected vehicle if none selected
     useEffect(() => {
@@ -81,19 +71,28 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         }
     }, [selectedVehicle, vehicles, setSelectedVehicle]);
 
-    const roadLists = selectedVehicle ? getByVehicle(selectedVehicle) : [];
+    const roadLists = useMemo(
+        () => (selectedVehicle ? calculatedCache[selectedVehicle] ?? [] : []),
+        [selectedVehicle, calculatedCache]
+    );
 
-    const editingRoadList = useMemo<RoadList | null>(() => {
-        if (editingId) {
-            return getById(editingId) ?? null;
-        }
-
+    // The road list being edited, plus the balance carried into it from the road
+    // list before it. A road list that opens a chain has nothing carried in.
+    const editing = useMemo<{ roadList: RoadList; carried: Balance | null } | null>(() => {
         if (!selectedVehicle) return null;
 
         const vehicleConfig = useVehicleStore.getState().vehicles.find(v => v.id === selectedVehicle);
         if (!vehicleConfig) return null;
 
-        // Creating new roadlist
+        if (editingId) {
+            const roadList = getById(editingId);
+            if (!roadList) return null;
+
+            const index = roadLists.findIndex(rl => rl.id === editingId);
+            return { roadList, carried: balanceAfter(index > 0 ? roadLists[index - 1] : undefined) };
+        }
+
+        // Creating new roadlist, appended after the current last one
         const lastRoadList = roadLists[roadLists.length - 1];
         const modes = getModes(vehicleConfig);
 
@@ -120,14 +119,20 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         }
 
         return {
-            vehicle: selectedVehicle,
-            start: new Date(),
-            end: new Date(),
-            startFuel: lastRoadList?.cumulativeFuel ?? 0,
-            startHours: initialStartHours,
-            itineraries: [newItinerary],
+            roadList: {
+                vehicle: selectedVehicle,
+                start: new Date(),
+                end: new Date(),
+                startFuel: lastRoadList?.cumulativeFuel ?? 0,
+                startHours: initialStartHours,
+                resetBalance: false,
+                itineraries: [newItinerary],
+            },
+            carried: balanceAfter(lastRoadList),
         };
     }, [editingId, roadLists, selectedVehicle, getById]);
+
+    const editingRoadList = editing?.roadList ?? null;
 
     const deletingRoadList = useMemo(() => {
         return deletingId ? getById(deletingId) : null;
@@ -149,8 +154,8 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
     };
 
     const handleDelete = async () => {
-        if (deletingId && selectedVehicle) {
-            await deleteRoadList(deletingId, selectedVehicle);
+        if (deletingId) {
+            await deleteRoadList(deletingId);
             setIsDeleteOpen(false);
             setDeletingId(null);
         }
@@ -197,6 +202,8 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                 </Card.Header>
                 <Card.Body>
                     <Tabs.Root
+                        lazyMount
+                        unmountOnExit
                         value={selectedVehicle || undefined}
                         onValueChange={(e) => {
                             const params = new URLSearchParams();
@@ -249,7 +256,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             <Tabs.Content key={vehicle.id} value={vehicle.id}>
                                 <RoadListTable
                                     loading={loading}
-                                    roadLists={roadLists}
+                                    roadLists={getByVehicle(vehicle.id)}
                                     onOpen={handleOpenForm}
                                     onDelete={handleOpenDelete}
                                 />
@@ -305,9 +312,10 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                 </Dialog.Title>
                             </Dialog.Header>
                             <Dialog.Body>
-                                {editingRoadList && (
+                                {editing && (
                                     <RoadListForm
-                                        roadList={editingRoadList}
+                                        roadList={editing.roadList}
+                                        carried={editing.carried}
                                         onClose={handleCloseForm}
                                     />
                                 )}

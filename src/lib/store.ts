@@ -19,7 +19,7 @@ type StoreActions = {
     fetchAll: () => Promise<void>;
     hydrate: (roadLists: RoadList[], vehicle?: string) => void;
     upsert: (roadList: RoadList) => Promise<void>;
-    delete: (id: string, vehicle: Vehicle) => Promise<void>;
+    delete: (id: string) => Promise<void>;
     setSelectedVehicle: (vehicle: Vehicle) => void;
 
     // Selectors
@@ -74,23 +74,32 @@ export const useStore = create<StoreState & StoreActions>((set, get) => ({
     upsert: async (roadList) => {
         set({ loading: true });
         try {
-            const allRoadLists = get().roadLists;
-            await upsertRoadList(roadList, roadList.vehicle, allRoadLists);
-            await get().fetchAll();
+            const saved = await upsertRoadList(roadList);
+
+            // Apply the write locally instead of re-reading the collection. The
+            // subscription reconciles with the server copy when it arrives.
+            const existing = get().roadLists;
+            const index = existing.findIndex(rl => rl.id === saved.id);
+            const roadLists = index === -1
+                ? [...existing, saved]
+                : existing.map((rl, i) => (i === index ? saved : rl));
+
+            get().hydrate(roadLists);
         } catch (error) {
             console.error('Error upserting road list:', error);
+        } finally {
             set({ loading: false });
         }
     },
 
-    delete: async (id, vehicle) => {
+    delete: async (id) => {
         set({ loading: true });
         try {
-            const allRoadLists = get().roadLists;
-            await deleteRoadList(id, vehicle, allRoadLists);
-            await get().fetchAll();
+            await deleteRoadList(id);
+            get().hydrate(get().roadLists.filter(rl => rl.id !== id));
         } catch (error) {
             console.error('Error deleting road list:', error);
+        } finally {
             set({ loading: false });
         }
     },

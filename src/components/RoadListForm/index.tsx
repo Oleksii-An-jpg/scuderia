@@ -1,14 +1,14 @@
 // src/components/RoadListForm/index.tsx
 
 'use client';
-import {FC, PropsWithChildren, useEffect, useMemo} from 'react';
+import {FC, PropsWithChildren, useEffect, useRef} from 'react';
 import {DndContext, closestCenter, UniqueIdentifier} from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import {Button, Grid, Alert, GridItem, Heading, HStack, IconButton, Separator, Text, VStack} from '@chakra-ui/react';
 import {BiPlus, BiMenu, BiSolidWrench} from 'react-icons/bi';
-import { Itinerary, RoadList } from '@/types/roadList';
+import { CalculatedItinerary, EngineHours, Itinerary, RoadList } from '@/types/roadList';
 import { getModes, isBoat } from '@/types/vehicle';
 import { calculateRoadList } from '@/lib/calculations';
 import { useStore } from '@/lib/store';
@@ -16,11 +16,14 @@ import { useVehicleStore, selectVehicleById } from '@/lib/vehicleStore';
 import RoadListHeader from '@/components/RoadListHeader';
 import ItineraryRow from '@/components/ItineraryRow';
 import Summary from '@/components/Summary';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import type { Balance } from '@/components/RoadLists';
 import type {DragEndEvent} from "@dnd-kit/core/dist/types";
 
 type Props = {
     roadList: RoadList;
+    // The balance carried in from the previous road list, or null when this road
+    // list opens the chain.
+    carried: Balance | null;
     onClose: () => void;
 }
 
@@ -50,7 +53,33 @@ const SortableItem: FC<SortableItemProps> = ({ id, children, totalColumns }) => 
     );
 }
 
-const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
+function sameEngineHours(a: unknown, b: unknown): boolean {
+    return typeof a === 'object' && a !== null && typeof b === 'object' && b !== null
+        && (a as EngineHours).left === (b as EngineHours).left
+        && (a as EngineHours).right === (b as EngineHours).right;
+}
+
+// Rows are recalculated from scratch on every keystroke, so an untouched row would
+// otherwise arrive at ItineraryRow as a new object and re-render a DatePicker, a
+// file upload and a popover for nothing. Compare by value and keep the old object.
+function sameRow(a: CalculatedItinerary, b: CalculatedItinerary): boolean {
+    const keys = Object.keys(b);
+    if (keys.length !== Object.keys(a).length) return false;
+
+    return keys.every(key => {
+        const left = (a as Record<string, unknown>)[key];
+        const right = (b as Record<string, unknown>)[key];
+
+        if (left === right) return true;
+        if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
+        if (Array.isArray(left) && Array.isArray(right)) {
+            return left.length === right.length && left.every((item, i) => item === right[i]);
+        }
+        return sameEngineHours(left, right);
+    });
+}
+
+const RoadListForm: FC<Props> = ({ roadList, carried, onClose }) => {
     const upsert = useStore(state => state.upsert);
 
     const vehicleConfig = useVehicleStore(state => selectVehicleById(state, roadList.vehicle));
@@ -80,23 +109,28 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
     const itineraries = watch('itineraries');
     const startFuel = watch('startFuel');
     const startHours = watch('startHours');
-    const itinerariesKey = JSON.stringify(itineraries);
+    const resetBalance = watch('resetBalance');
 
-    // Create stable object with useMemo
-    const calculationInput = useMemo(() => ({
-        ...roadList,
-        itineraries,
-        startFuel,
-        startHours,
-    }), [itinerariesKey, startFuel, typeof startHours === 'object' ? startHours.left : startHours, typeof startHours === 'object' ? startHours.right : startHours, roadList]);
+    // The balance is carried forward unless this road list opens the chain or the
+    // user has explicitly chosen to set it by hand.
+    const carriedIn = carried && !resetBalance ? carried : null;
+    const openingFuel = carriedIn ? carriedIn.fuel : startFuel;
+    const openingHours = carriedIn ? carriedIn.hours : startHours;
 
-    // Now debounce the STABLE input
-    const debouncedInput = useDebouncedValue(calculationInput, 200);
+    // Calculating one road list costs microseconds, so it runs inline on every
+    // render — no debounce, and the totals never disagree with what is on screen.
+    const calculated = calculateRoadList(
+        { ...roadList, itineraries, startFuel: openingFuel, startHours: openingHours },
+        vehicleConfig
+    );
 
-    // Calculate with debounced values
-    const calculated = useMemo(() => {
-        return calculateRoadList(debouncedInput, vehicleConfig);
-    }, [debouncedInput, vehicleConfig]);
+    const rowsRef = useRef<CalculatedItinerary[]>([]);
+    const calculatedRows: CalculatedItinerary[] = calculated.itineraries;
+    const rows = calculatedRows.map((row, index) => {
+        const previous = rowsRef.current[index];
+        return previous && sameRow(previous, row) ? previous : row;
+    });
+    rowsRef.current = rows;
 
     useEffect(() => {
         reset(roadList);
@@ -110,6 +144,10 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         try {
             await upsert({
                 ...data,
+                // Persist the opening balance that was actually in effect. It is only
+                // read back when this road list opens the chain or resets it.
+                startFuel: openingFuel,
+                startHours: openingHours,
                 start: new Date(minDate),
                 end: new Date(maxDate),
             });
@@ -152,7 +190,7 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
         <FormProvider {...methods}>
             <form id="upsert" onSubmit={handleSubmit(onSubmit)}>
                 <VStack alignItems="stretch" gap={4}>
-                    <RoadListHeader vehicle={roadList.vehicle} />
+                    <RoadListHeader vehicle={roadList.vehicle} carried={carried} />
 
                     <Alert.Root status="info">
                         <Alert.Indicator />
@@ -210,8 +248,8 @@ const RoadListForm: FC<Props> = ({ roadList, onClose }) => {
                                             key={field.id}
                                             index={index}
                                             vehicle={roadList.vehicle}
-                                            calculated={calculated.itineraries[index]}
-                                            onRemove={() => remove(index)}
+                                            calculated={rows[index]}
+                                            onRemove={remove}
                                             isLast={index === fields.length - 1}
                                         />
                                     </SortableItem>

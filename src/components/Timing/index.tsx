@@ -1,4 +1,4 @@
-import {FC, useMemo} from "react";
+import {FC, useMemo, useState} from "react";
 import {Dialog, IconButton, Input, Portal, Table, VStack} from "@chakra-ui/react";
 import {BiSolidTimer} from "react-icons/bi";
 import {CalculatedItinerary, RoadList} from "@/types/roadList";
@@ -175,11 +175,12 @@ function distributeTimeSegments(
 const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
     const { register, watch } = useFormContext<RoadList>();
     const startTime = watch(`itineraries.${index}.startTime`);
+    const [open, setOpen] = useState(false);
 
     const modes = useMemo(() => getModes(vehicleConfig), [vehicleConfig]);
 
     const modeData = useMemo(() => {
-        if (!calculated) return {};
+        if (!calculated || !open) return {};
         const data: Record<string, number> = {};
         modes.forEach(mode => {
             // @ts-expect-error: dynamic keys
@@ -187,15 +188,18 @@ const Timing: FC<TimingProps> = ({ calculated, vehicleConfig, index }) => {
             if (value > 0) data[mode.id] = value;
         });
         return data;
-    }, [calculated, modes]);
+    }, [calculated, modes, open]);
 
+    // Laying out the segments is only worth doing for the row whose dialog is open;
+    // it used to run for every row on every render.
     const timeSegments = useMemo(() => {
+        if (!open) return [];
         const date = calculated?.date ? new Date(calculated.date) : undefined;
         return distributeTimeSegments(modeData, modes, startTime || '09:00', date);
-    }, [modeData, modes, startTime, calculated?.date]);
+    }, [modeData, modes, startTime, calculated?.date, open]);
 
     return (
-        <Dialog.Root>
+        <Dialog.Root open={open} onOpenChange={({ open: isOpen }) => setOpen(isOpen)} lazyMount unmountOnExit>
             <Dialog.Trigger asChild>
                 <IconButton size="xs" variant="outline">
                     <BiSolidTimer />

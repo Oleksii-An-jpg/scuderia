@@ -200,13 +200,15 @@ export default function Auth() {
         }
     }
 
-    const handleConfirmCode = handleSubmit(async (data) => {
-        if (!conf) return;
+    async function confirmCode(verificationCode: string) {
+        // Auto-submit fires on every completion, so ignore a code that arrives
+        // while a confirmation is already in flight.
+        if (!conf || loading) return;
 
         setTrue();
 
         try {
-            const result = await conf.confirm(data.code.join(''));
+            const result = await conf.confirm(verificationCode);
             const token = await result.user.getIdToken(true);
             await createSession(token);
             setUser(result.user);
@@ -225,7 +227,9 @@ export default function Auth() {
         } finally {
             setFalse();
         }
-    });
+    }
+
+    const handleConfirmCode = handleSubmit((data) => confirmCode(data.code.join('')));
 
     async function handleLogout() {
         setTrue();
@@ -291,9 +295,11 @@ export default function Auth() {
                                             name="code"
                                             render={({ field }) => (
                                                 <PinInput.Root
+                                                    otp
                                                     w="full"
                                                     value={field.value}
                                                     onValueChange={(e) => field.onChange(e.value)}
+                                                    onValueComplete={(e) => confirmCode(e.valueAsString)}
                                                 >
                                                     <PinInput.HiddenInput />
                                                     <PinInput.Control>

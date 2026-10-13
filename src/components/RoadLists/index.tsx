@@ -11,20 +11,20 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink, Box, Icon, HoverCard, ButtonGroup
+    Link as ChakraLink, Icon, ButtonGroup
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
 import { getModes, isBoat } from '@/types/vehicle';
 import { EngineHours, Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
+import VehicleSummary from '@/components/VehicleSummary';
 import RoadListForm from '@/components/RoadListForm';
 import {auth, subscribeToRoadLists} from "@/lib/firebase";
 import {usePathname} from "next/navigation";
 import Link from "next/link";
 import {BiAnchor, BiPlus, BiDownload} from "react-icons/bi";
 import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
-import Image from "next/image";
 import {signOut} from "firebase/auth";
 import {deleteSession} from "@/app/actions";
 
@@ -183,10 +183,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         <VStack alignItems="stretch">
             <Card.Root>
                 <Card.Header>
-                    <HStack justifyContent="space-between" className="relative pl-18!">
-                        <Box className="absolute left-0 top-1/2 -translate-y-1/2">
-                            <Image src="/easter-egg.png" alt="easter-egg" width={60} height={60} />
-                        </Box>
+                    <HStack justifyContent="space-between" className="relative">
                         <Text>Дорожні листи</Text>
                         <ButtonGroup>
                             {role === 'admin' ? <Button colorPalette="yellow" asChild>
@@ -211,45 +208,33 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             params.set('vehicle', e.value);
                             window.history.replaceState({}, '', `${pathname}?${params.toString()}`)
                         }}
-                        css={{
-                            '--tabs-height': 'sizes.16',
-                        }}
+                        variant="plain"
                     >
-                        <Tabs.List zIndex={1}>
-                            {vehicles.map(vehicle => {
-                                const roadLists = getByVehicle(vehicle.id);
-                                const last = roadLists[roadLists.length - 1];
-                                const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
-                                const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0;
-                                const cumulativeHoursFromRecentMaintenance = last?.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
-                                const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
-                                return <HoverCard.Root key={vehicle.id}>
-                                    <HoverCard.Trigger>
-                                        <Tabs.Trigger value={vehicle.id}>
-                                            <Text as="b">{vehicle.name}</Text>
-                                        </Tabs.Trigger>
-                                    </HoverCard.Trigger>
-                                    <HoverCard.Positioner css={{ "--z-index": "2000" }}>
-                                        <HoverCard.Content>
-                                            <VStack alignItems="stretch">
-                                                <Text>{vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'}</Text>
-                                                <HStack className="whitespace-nowrap">
-                                                    <Text>{remainingFuel} л.</Text>
-                                                    <Text>{cumulativeHours}</Text>
-                                                </HStack>
-                                                {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
-                                                    <Text>Після ТО:</Text>
-                                                    <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
-                                                    <Text>{cumulativeHoursFromRecentMaintenance}</Text>
-                                                </HStack> : null}
-                                            </VStack>
-                                            <HoverCard.Arrow>
-                                                <HoverCard.ArrowTip />
-                                            </HoverCard.Arrow>
-                                        </HoverCard.Content>
-                                    </HoverCard.Positioner>
-                                </HoverCard.Root>
-                            })}
+                        <Tabs.List
+                            display="grid"
+                            gridTemplateColumns="repeat(auto-fill, minmax(260px, 1fr))"
+                            gap={2}
+                            mb={4}
+                        >
+                            {vehicles.map(vehicle => (
+                                <Tabs.Trigger
+                                    key={vehicle.id}
+                                    value={vehicle.id}
+                                    h="auto"
+                                    px={3}
+                                    py={2}
+                                    alignItems="flex-start"
+                                    borderWidth="1px"
+                                    borderColor="border"
+                                    borderRadius="md"
+                                    bg="bg"
+                                    color="fg"
+                                    _hover={{ bg: 'bg.muted' }}
+                                    _selected={{ borderColor: 'blue.500', bg: 'blue.50', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
+                                >
+                                    <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} />
+                                </Tabs.Trigger>
+                            ))}
                         </Tabs.List>
 
                         {vehicles.map(vehicle => (

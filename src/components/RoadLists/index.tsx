@@ -15,8 +15,8 @@ import {
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
-import { getModes, isBoat } from '@/types/vehicle';
-import { EngineHours, Itinerary, RoadList } from '@/types/roadList';
+import { getModes, isBoat, VehicleConfig } from '@/types/vehicle';
+import { CalculatedRoadList, EngineHours, Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
 import RoadListForm from '@/components/RoadListForm';
 import {auth, subscribeToRoadLists} from "@/lib/firebase";
@@ -27,6 +27,34 @@ import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
 import Image from "next/image";
 import {signOut} from "firebase/auth";
 import {deleteSession} from "@/app/actions";
+
+const formatHours = (value?: EngineHours | number) =>
+    value ? typeof value === 'object' ? `${value.left}, ${value.right} год.` : `${value} км.` : 0;
+
+const VehicleSummary: FC<{ vehicle: VehicleConfig; roadLists: CalculatedRoadList[]; inline?: boolean }> = ({ vehicle, roadLists, inline }) => {
+    const last = roadLists[roadLists.length - 1];
+    const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
+    const cumulativeHours = formatHours(last?.cumulativeHours);
+    const cumulativeHoursFromRecentMaintenance = formatHours(last?.cumulativeHoursFromRecentMaintenance);
+    const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0;
+    const Stack = inline ? HStack : VStack;
+
+    return (
+        <Stack alignItems={inline ? 'center' : 'stretch'} gap={inline ? 6 : 2} flexWrap="wrap">
+            <Text fontWeight={inline ? 'semibold' : undefined}>{vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'}</Text>
+            <HStack className="whitespace-nowrap">
+                {inline ? <Text color="fg.muted">Залишок:</Text> : null}
+                <Text>{remainingFuel} л.</Text>
+                <Text>{cumulativeHours}</Text>
+            </HStack>
+            {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
+                <Text color={inline ? 'fg.muted' : undefined}>Після ТО:</Text>
+                <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
+                <Text>{cumulativeHoursFromRecentMaintenance}</Text>
+            </HStack> : null}
+        </Stack>
+    );
+};
 
 type RoadListProps = {
     role?: string;
@@ -217,12 +245,6 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                     >
                         <Tabs.List zIndex={1}>
                             {vehicles.map(vehicle => {
-                                const roadLists = getByVehicle(vehicle.id);
-                                const last = roadLists[roadLists.length - 1];
-                                const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
-                                const cumulativeHours = last?.cumulativeHours ? typeof last?.cumulativeHours === 'object' ? `${last.cumulativeHours.left}, ${last.cumulativeHours.right} год.` : `${last.cumulativeHours} км.` : 0;
-                                const cumulativeHoursFromRecentMaintenance = last?.cumulativeHoursFromRecentMaintenance ? typeof last?.cumulativeHoursFromRecentMaintenance === 'object' ? `${last.cumulativeHoursFromRecentMaintenance.left}, ${last.cumulativeHoursFromRecentMaintenance.right} год.` : `${last.cumulativeHoursFromRecentMaintenance} км.` : 0;
-                                const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0
                                 return <HoverCard.Root key={vehicle.id}>
                                     <HoverCard.Trigger>
                                         <Tabs.Trigger value={vehicle.id}>
@@ -231,18 +253,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                     </HoverCard.Trigger>
                                     <HoverCard.Positioner css={{ "--z-index": "2000" }}>
                                         <HoverCard.Content>
-                                            <VStack alignItems="stretch">
-                                                <Text>{vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'}</Text>
-                                                <HStack className="whitespace-nowrap">
-                                                    <Text>{remainingFuel} л.</Text>
-                                                    <Text>{cumulativeHours}</Text>
-                                                </HStack>
-                                                {cumulativeHoursFromRecentMaintenance ? <HStack className="whitespace-nowrap">
-                                                    <Text>Після ТО:</Text>
-                                                    <Text>{cumulativeFuelFromRecentMaintenance} л.</Text>
-                                                    <Text>{cumulativeHoursFromRecentMaintenance}</Text>
-                                                </HStack> : null}
-                                            </VStack>
+                                            <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} />
                                             <HoverCard.Arrow>
                                                 <HoverCard.ArrowTip />
                                             </HoverCard.Arrow>
@@ -254,6 +265,9 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
 
                         {vehicles.map(vehicle => (
                             <Tabs.Content key={vehicle.id} value={vehicle.id}>
+                                <Box borderWidth="1px" borderRadius="md" px={4} py={2} mb={4} bg="gray.50">
+                                    <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} inline />
+                                </Box>
                                 <RoadListTable
                                     loading={loading}
                                     roadLists={getByVehicle(vehicle.id)}

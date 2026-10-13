@@ -15,9 +15,10 @@ import {
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
-import { getModes, isBoat, VehicleConfig } from '@/types/vehicle';
-import { CalculatedRoadList, EngineHours, Itinerary, RoadList } from '@/types/roadList';
+import { getModes, isBoat } from '@/types/vehicle';
+import { EngineHours, Itinerary, RoadList } from '@/types/roadList';
 import RoadListTable from '@/components/RoadListTable';
+import VehicleSummary from '@/components/VehicleSummary';
 import RoadListForm from '@/components/RoadListForm';
 import {auth, subscribeToRoadLists} from "@/lib/firebase";
 import {usePathname} from "next/navigation";
@@ -27,27 +28,6 @@ import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
 import Image from "next/image";
 import {signOut} from "firebase/auth";
 import {deleteSession} from "@/app/actions";
-
-const formatHours = (value?: EngineHours | number) =>
-    value ? typeof value === 'object' ? `${value.left}, ${value.right} год.` : `${value} км.` : 0;
-
-const VehicleSummary: FC<{ vehicle: VehicleConfig; roadLists: CalculatedRoadList[] }> = ({ vehicle, roadLists }) => {
-    const last = roadLists[roadLists.length - 1];
-    const remainingFuel = last?.cumulativeFuel ? Math.round(last.cumulativeFuel) : 0;
-    const cumulativeHours = formatHours(last?.cumulativeHours);
-    const cumulativeHoursFromRecentMaintenance = formatHours(last?.cumulativeHoursFromRecentMaintenance);
-    const cumulativeFuelFromRecentMaintenance = last?.cumulativeFuelFromRecentMaintenance ? Math.round(last.cumulativeFuelFromRecentMaintenance) : 0;
-
-    return (
-        <VStack alignItems="flex-start" gap={0} fontSize="xs" fontWeight="normal" color="fg.muted" className="whitespace-nowrap">
-            <Text>{vehicle.fuel === 'gasoline' ? 'бензин' : 'дизель'}</Text>
-            <Text>{remainingFuel} л. {cumulativeHours}</Text>
-            {cumulativeHoursFromRecentMaintenance ? <Text>
-                Після ТО: {cumulativeFuelFromRecentMaintenance} л. {cumulativeHoursFromRecentMaintenance}
-            </Text> : null}
-        </VStack>
-    );
-};
 
 type RoadListProps = {
     role?: string;
@@ -232,17 +212,31 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                             params.set('vehicle', e.value);
                             window.history.replaceState({}, '', `${pathname}?${params.toString()}`)
                         }}
-                        css={{
-                            '--tabs-height': 'sizes.16',
-                        }}
+                        variant="plain"
                     >
-                        <Tabs.List zIndex={1} flexWrap="wrap">
+                        <Tabs.List
+                            display="grid"
+                            gridTemplateColumns="repeat(auto-fill, minmax(260px, 1fr))"
+                            gap={2}
+                            mb={4}
+                        >
                             {vehicles.map(vehicle => (
-                                <Tabs.Trigger key={vehicle.id} value={vehicle.id} h="auto" py={2} alignItems="flex-start">
-                                    <VStack alignItems="flex-start" gap={1}>
-                                        <Text as="b">{vehicle.name}</Text>
-                                        <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} />
-                                    </VStack>
+                                <Tabs.Trigger
+                                    key={vehicle.id}
+                                    value={vehicle.id}
+                                    h="auto"
+                                    px={3}
+                                    py={2}
+                                    alignItems="flex-start"
+                                    borderWidth="1px"
+                                    borderColor="border"
+                                    borderRadius="md"
+                                    bg="bg"
+                                    color="fg"
+                                    _hover={{ bg: 'bg.muted' }}
+                                    _selected={{ borderColor: 'blue.500', bg: 'blue.50', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
+                                >
+                                    <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} />
                                 </Tabs.Trigger>
                             ))}
                         </Tabs.List>

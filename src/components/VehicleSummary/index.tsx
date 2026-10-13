@@ -5,7 +5,7 @@ import { Badge, HStack, Text, VStack } from '@chakra-ui/react';
 import { VehicleConfig } from '@/types/vehicle';
 import { CalculatedRoadList, EngineHours } from '@/types/roadList';
 
-const formatNumber = (value: number) => value.toLocaleString('uk-UA', { maximumFractionDigits: 1 });
+const formatNumber = (value: number) => value.toLocaleString('uk-UA', { maximumFractionDigits: 2 });
 
 const formatUsage = (value?: EngineHours | number) =>
     typeof value === 'object'

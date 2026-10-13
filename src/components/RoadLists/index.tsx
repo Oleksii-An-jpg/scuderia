@@ -11,7 +11,7 @@ import {
     Button,
     CloseButton,
     Text, HStack,
-    Link as ChakraLink, Box, Icon, ButtonGroup
+    Link as ChakraLink, Icon, ButtonGroup
 } from '@chakra-ui/react';
 import { useStore } from '@/lib/store';
 import { useVehicleStore } from '@/lib/vehicleStore';
@@ -25,7 +25,6 @@ import {usePathname} from "next/navigation";
 import Link from "next/link";
 import {BiAnchor, BiPlus, BiDownload} from "react-icons/bi";
 import { exportAllVehiclesToXlsx } from '@/lib/exportXlsx';
-import Image from "next/image";
 import {signOut} from "firebase/auth";
 import {deleteSession} from "@/app/actions";
 
@@ -184,10 +183,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
         <VStack alignItems="stretch">
             <Card.Root>
                 <Card.Header>
-                    <HStack justifyContent="space-between" className="relative pl-18!">
-                        <Box className="absolute left-0 top-1/2 -translate-y-1/2">
-                            <Image src="/easter-egg.png" alt="easter-egg" width={60} height={60} />
-                        </Box>
+                    <HStack justifyContent="space-between" className="relative">
                         <Text>Дорожні листи</Text>
                         <ButtonGroup>
                             {role === 'admin' ? <Button colorPalette="yellow" asChild>

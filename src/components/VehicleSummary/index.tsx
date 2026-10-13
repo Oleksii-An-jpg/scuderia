@@ -16,7 +16,7 @@ const SummaryRow: FC<{ label: string; fuel: number; usage: string }> = ({ label,
     <HStack justifyContent="space-between" gap={3} w="full" className="whitespace-nowrap">
         <Text color="fg.muted">{label}</Text>
         <Text fontVariantNumeric="tabular-nums">
-            <Text as="span" fontWeight="semibold" color={fuel < 0 ? 'red.600' : undefined}>{formatNumber(fuel)} л</Text>
+            <Text as="span" fontWeight="semibold" color={fuel < 0 ? 'fg.error' : undefined}>{formatNumber(fuel)} л</Text>
             <Text as="span" color="fg.muted"> · {usage}</Text>
         </Text>
     </HStack>

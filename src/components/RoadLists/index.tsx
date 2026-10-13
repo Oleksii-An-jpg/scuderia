@@ -230,7 +230,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                                     bg="bg"
                                     color="fg"
                                     _hover={{ bg: 'bg.muted' }}
-                                    _selected={{ borderColor: 'blue.500', bg: 'blue.50', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
+                                    _selected={{ borderColor: 'blue.solid', bg: 'blue.subtle', boxShadow: '0 0 0 1px var(--chakra-colors-blue-solid)' }}
                                 >
                                     <VehicleSummary vehicle={vehicle} roadLists={getByVehicle(vehicle.id)} />
                                 </Tabs.Trigger>
@@ -249,7 +249,7 @@ const RoadLists: FC<RoadListProps> = ({ role }) => {
                         ))}
                     </Tabs.Root>
                 </Card.Body>
-                <Card.Footer shadow="inset" className="bg-white sticky bottom-0">
+                <Card.Footer shadow="inset" bg="bg.panel" className="sticky bottom-0">
                     <HStack pt={4}>
                         <Button variant="solid" colorPalette="green" size="lg" onClick={() => handleOpenForm()}>
                             <Icon>

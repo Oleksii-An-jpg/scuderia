@@ -69,7 +69,6 @@ export async function getAllVehiclesServer(db: Firestore = adminDb): Promise<Ser
         const snapshot = await db
             .collection('vehicles')
             .withConverter(adminVehicleConverter)
-            .where('active', '==', true)
             .get();
         console.timeEnd('Firestore vehicles query');
 

@@ -6,14 +6,12 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     signOut,
-    onAuthStateChanged,
     signInWithPhoneNumber,
     RecaptchaVerifier,
-    User,
     ConfirmationResult,
 } from "firebase/auth";
-import {createSession, deleteSession} from "@/app/actions";
-import {AbsoluteCenter, Box, Button, Container, InputGroup, VStack, Alert, Field, Input, Separator, PinInput, Text} from "@chakra-ui/react";
+import {createSession} from "@/app/actions";
+import {AbsoluteCenter, Box, Button, Container, InputGroup, VStack, Alert, Field, Input, Separator, PinInput} from "@chakra-ui/react";
 import {useForm, Controller} from "react-hook-form";
 import {useBoolean} from "usehooks-ts";
 import {BiLogoGoogle} from "react-icons/bi";
@@ -24,29 +22,25 @@ type Values = {
 }
 
 const CODE_LENGTH = 6;
-const DEFAULT_COUNTRY_CODE = "+380";
-const E164 = /^\+[1-9]\d{7,14}$/;
+const COUNTRY_CODE = "+380";
+const UA_PHONE = /^\+380\d{9}$/;
 
 // Firebase only accepts E.164, and every rejected number still counts towards
 // the per-IP/per-number quota, so normalize before hitting the network.
+// The field sits behind a fixed +380 prefix, but people still type the number
+// the way they know it: 501234567, 0501234567, 380501234567 or +380 50 123 45 67.
 function normalizePhoneNumber(raw: string): string | null {
-    const trimmed = raw.trim();
-    const digits = trimmed.replace(/\D/g, '');
+    let digits = raw.replace(/\D/g, '');
 
-    if (!digits) return null;
-
-    let normalized: string;
-    if (trimmed.startsWith('+')) {
-        normalized = `+${digits}`;
-    } else if (digits.startsWith('380')) {
-        normalized = `+${digits}`;
+    if (digits.startsWith('380')) {
+        digits = digits.slice(3);
     } else if (digits.startsWith('0')) {
-        normalized = `${DEFAULT_COUNTRY_CODE}${digits.slice(1)}`;
-    } else {
-        normalized = `${DEFAULT_COUNTRY_CODE}${digits}`;
+        digits = digits.slice(1);
     }
 
-    return E164.test(normalized) ? normalized : null;
+    const normalized = `${COUNTRY_CODE}${digits}`;
+
+    return UA_PHONE.test(normalized) ? normalized : null;
 }
 
 const AUTH_ERRORS: Record<string, { title: string; description: string }> = {
@@ -115,29 +109,41 @@ function describeError(err: unknown): { type: string; message: string } {
         };
     }
 
+    // Errors from outside Firebase Auth (reCAPTCHA, the browser) carry no code,
+    // so fall back to the message - 'unknown' tells nobody anything.
+    const detail = code ?? (err instanceof Error && err.message ? err.message : 'unknown');
+
     return {
         type: "Помилка входу",
-        message: `Не вдалося увійти. Код помилки: ${code ?? 'unknown'}`,
+        message: `Не вдалося увійти. Код помилки: ${detail}`,
     };
 }
 
 export default function Auth() {
     const { register, watch, control, setError, reset, clearErrors, handleSubmit, formState: { errors } } = useForm<Values>()
     const [phoneNumber, code] = watch(['phoneNumber', 'code'])
-    const [user, setUser] = useState<User | null>(null);
     const [conf, setConf] = useState<ConfirmationResult | null>(null);
-    const verifierRef = useRef<RecaptchaVerifier | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const verifierRef = useRef<{ verifier: RecaptchaVerifier; element: HTMLElement } | null>(null);
     const { value: loading, setTrue, setFalse } = useBoolean();
+    // Off until the stale Firebase sign-in (if any) has been dropped, so a login
+    // cannot start and then be wiped out by that sign-out.
+    const { value: ready, setTrue: setReady } = useBoolean();
 
     const clearVerifier = useCallback(() => {
-        if (verifierRef.current) {
-            try {
-                verifierRef.current.clear();
-            } catch (err) {
-                console.error("Error clearing RecaptchaVerifier:", err);
-            }
-            verifierRef.current = null;
+        const current = verifierRef.current;
+        if (!current) return;
+
+        verifierRef.current = null;
+        try {
+            current.verifier.clear();
+        } catch (err) {
+            console.error("Error clearing RecaptchaVerifier:", err);
         }
+        // clear() leaves an invisible widget's DOM in place, and reCAPTCHA refuses
+        // to render twice into the same element - so every verifier gets its own
+        // element, removed here.
+        current.element.remove();
     }, []);
 
     // A reCAPTCHA token is single-use and expires ~2 minutes after render, so it
@@ -146,11 +152,14 @@ export default function Auth() {
     const createVerifier = useCallback(async () => {
         clearVerifier();
 
-        const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        const element = document.createElement('div');
+        containerRef.current?.appendChild(element);
+
+        const verifier = new RecaptchaVerifier(auth, element, {
             size: "invisible",
         });
+        verifierRef.current = { verifier, element };
         await verifier.render();
-        verifierRef.current = verifier;
 
         return verifier;
     }, [clearVerifier]);
@@ -160,13 +169,14 @@ export default function Auth() {
         return () => clearVerifier();
     }, [clearVerifier]);
 
-    // Watch Firebase auth
+    // The page only renders without a valid server session (see auth/page.tsx),
+    // so a Firebase user still remembered by the browser is left over from an
+    // expired or revoked session. Drop it, so the form starts from a clean slate.
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-            setUser(firebaseUser);
-        });
-        return () => unsub();
-    }, []);
+        signOut(auth)
+            .catch((err) => console.error("Error clearing stale sign-in:", err))
+            .finally(setReady);
+    }, [setReady]);
 
     async function handleGoogleLogin() {
         setTrue();
@@ -175,7 +185,6 @@ export default function Auth() {
             const result = await signInWithPopup(auth, provider);
             const token = await result.user.getIdToken(true);
             await createSession(token);
-            setUser(result.user);
         } catch (err) {
             if (isRedirectError(err)) throw err;
             console.error("Google login error:", err);
@@ -224,7 +233,6 @@ export default function Auth() {
             const result = await conf.confirm(verificationCode);
             const token = await result.user.getIdToken(true);
             await createSession(token);
-            setUser(result.user);
             reset();
             clearErrors();
         } catch (err) {
@@ -244,18 +252,10 @@ export default function Auth() {
 
     const handleConfirmCode = handleSubmit((data) => confirmCode(data.code.join('')));
 
-    async function handleLogout() {
-        setTrue();
-        await signOut(auth);
-        setUser(null);
-        setFalse();
-        await deleteSession();
-    }
-
     const enteredCode = code?.join('') ?? '';
 
     return <Box position="relative" h="100vh" w="full">
-        <div id="recaptcha-container" />
+        <div ref={containerRef} />
         <AbsoluteCenter>
             <Container maxW="xl">
                 <VStack gap={8}>
@@ -271,100 +271,79 @@ export default function Auth() {
                         </Alert.Root>
                     )}
 
-                    {!user ? (
-                        <VStack>
-                            <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-                                {/* PHONE INPUT */}
-                                <VStack align="stretch" gap={4}>
-                                    <Field.Root
-                                        required
-                                        disabled={loading || !!conf}
-                                        invalid={!!errors.phoneNumber}
-                                        orientation="horizontal"
-                                    >
-                                        <Field.Label>Телефон</Field.Label>
-                                        <InputGroup startElement="+380">
-                                            <Input
-                                                ps="6ch"
-                                                type="tel"
-                                                placeholder="501234567"
-                                                {...register('phoneNumber', {
-                                                    setValueAs(value: string) {
-                                                        return `+380${value.split(' ').join('')}`
-                                                    },
-                                                    pattern: {
-                                                        value: /^\+380\d{9}$/,
-                                                        message: 'Номер телефону має містити 9 цифр',
-                                                    },
-                                                })}
-                                            />
-                                        </InputGroup>
-                                        <Field.ErrorText>{errors.phoneNumber?.message}</Field.ErrorText>
-                                    </Field.Root>
-                                    <Field.Root disabled={!conf} orientation="horizontal" invalid={!!errors.code}>
-                                        <Field.Label>Код (смс)</Field.Label>
-                                        <Controller
-                                            control={control}
-                                            name="code"
-                                            render={({ field }) => (
-                                                <PinInput.Root
-                                                    otp
-                                                    w="full"
-                                                    value={field.value}
-                                                    onValueChange={(e) => field.onChange(e.value)}
-                                                    onValueComplete={(e) => confirmCode(e.valueAsString)}
-                                                >
-                                                    <PinInput.HiddenInput />
-                                                    <PinInput.Control>
-                                                        <PinInput.Input index={0} />
-                                                        <PinInput.Input index={1} />
-                                                        <PinInput.Input index={2} />
-                                                        <PinInput.Input index={3} />
-                                                        <PinInput.Input index={4} />
-                                                        <PinInput.Input index={5} />
-                                                    </PinInput.Control>
-                                                </PinInput.Root>
-                                            )}
+                    <VStack>
+                        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+                            {/* PHONE INPUT */}
+                            <VStack align="stretch" gap={4}>
+                                <Field.Root
+                                    required
+                                    disabled={loading || !!conf}
+                                    invalid={!!errors.phoneNumber}
+                                    orientation="horizontal"
+                                >
+                                    <Field.Label>Телефон</Field.Label>
+                                    <InputGroup startElement="+380">
+                                        <Input
+                                            ps="6ch"
+                                            type="tel"
+                                            placeholder="501234567"
+                                            {...register('phoneNumber')}
                                         />
-                                        <Field.ErrorText>{errors.code?.message}</Field.ErrorText>
-                                    </Field.Root>
-                                    <Button
-                                        type="button"
-                                        colorPalette="blue"
-                                        loading={loading}
-                                        loadingText={conf ? 'Входимо' : 'Надсилаємо'}
-                                        onClick={conf ? handleConfirmCode : handleSendCode}
-                                        disabled={loading || !phoneNumber || Boolean(conf && enteredCode.length < CODE_LENGTH)}
-                                    >
-                                        {conf ? 'Увійти' : "Надіслати код на номер"}
-                                    </Button>
-                                </VStack>
-                            </form>
+                                    </InputGroup>
+                                    <Field.ErrorText>{errors.phoneNumber?.message}</Field.ErrorText>
+                                </Field.Root>
+                                <Field.Root disabled={!conf} orientation="horizontal" invalid={!!errors.code}>
+                                    <Field.Label>Код (смс)</Field.Label>
+                                    <Controller
+                                        control={control}
+                                        name="code"
+                                        render={({ field }) => (
+                                            <PinInput.Root
+                                                otp
+                                                w="full"
+                                                value={field.value}
+                                                onValueChange={(e) => field.onChange(e.value)}
+                                                onValueComplete={(e) => confirmCode(e.valueAsString)}
+                                            >
+                                                <PinInput.HiddenInput />
+                                                <PinInput.Control>
+                                                    <PinInput.Input index={0} />
+                                                    <PinInput.Input index={1} />
+                                                    <PinInput.Input index={2} />
+                                                    <PinInput.Input index={3} />
+                                                    <PinInput.Input index={4} />
+                                                    <PinInput.Input index={5} />
+                                                </PinInput.Control>
+                                            </PinInput.Root>
+                                        )}
+                                    />
+                                    <Field.ErrorText>{errors.code?.message}</Field.ErrorText>
+                                </Field.Root>
+                                <Button
+                                    type="button"
+                                    colorPalette="blue"
+                                    loading={loading}
+                                    loadingText={conf ? 'Входимо' : 'Надсилаємо'}
+                                    onClick={conf ? handleConfirmCode : handleSendCode}
+                                    disabled={!ready || loading || !phoneNumber || Boolean(conf && enteredCode.length < CODE_LENGTH)}
+                                >
+                                    {conf ? 'Увійти' : "Надіслати код на номер"}
+                                </Button>
+                            </VStack>
+                        </form>
 
-                            <Separator />
+                        <Separator />
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleGoogleLogin}
-                                disabled={loading}
-                            >
-                                <BiLogoGoogle />
-                                Зайти через Ґуґл
-                            </Button>
-                        </VStack>
-                    ) : (
-                        <VStack>
-                            <Text>Привіт, {user.phoneNumber ?? user.email}</Text>
-                            <Button
-                                type="button"
-                                onClick={handleLogout}
-                                disabled={loading}
-                            >
-                                Вийти
-                            </Button>
-                        </VStack>
-                    )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleGoogleLogin}
+                            disabled={!ready || loading}
+                        >
+                            <BiLogoGoogle />
+                            Зайти через Ґуґл
+                        </Button>
+                    </VStack>
                 </VStack>
             </Container>
         </AbsoluteCenter>
